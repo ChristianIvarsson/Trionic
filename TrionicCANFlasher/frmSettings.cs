@@ -732,6 +732,11 @@ namespace TrionicCANFlasher
                         cbUnlockSys.Enabled = true;
                     }
 
+                    else if (ecuindex == (int)ECU.DELCOE39 || ecuindex == (int)ECU.DELCOE78)
+                    {
+                        // cbUnlockSys.Enabled = true;
+                    }
+
                     // Other ECUs do not have power user features
                     else
                     {
@@ -766,7 +771,8 @@ namespace TrionicCANFlasher
                     if (cbEnableSUFeatures)
                     {
                         bool precheck = ((ecuindex == (int)ECU.TRIONIC8 && cbUseLegion.Checked && cbUseLegion.Enabled) ||
-                            ecuindex == (int)ECU.TRIONIC8_MCP || ecuindex == (int)ECU.Z22SEMain_LEG || ecuindex == (int)ECU.Z22SEMCP_LEG);
+                            ecuindex == (int)ECU.TRIONIC8_MCP || ecuindex == (int)ECU.Z22SEMain_LEG || ecuindex == (int)ECU.Z22SEMCP_LEG ||
+                            ecuindex == (int)ECU.DELCOE39     || ecuindex == (int)ECU.DELCOE78);
 
                         InterframeLabel.Enabled = precheck;
                         cbxInterFrame.Enabled = precheck;

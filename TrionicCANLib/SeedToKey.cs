@@ -38,6 +38,21 @@ namespace TrionicCANLib
             return returnKey;
         }
 
+        // NG9-5
+        public uint calculateKeyForE39(uint seed)
+        {
+            seed = (seed + 0x6C50) & 0xFFFF;
+            seed = ((seed << 8 | seed >> 8) - 0x22DA) & 0xFFFF;
+            return ((seed << 9 | seed >> 7) - 0x8BAC) & 0xFFFF;
+        }
+
+        public uint calculateKeyForE78(uint seed)
+        {
+            seed = ((seed << 8 | seed >> 8) - 0xF7FF) & 0xFFFF;
+            seed = ((seed << 8 | seed >> 8) - 0xAF9D) & 0xFFFF;
+            return (seed << 15 | seed >> 1) & 0xFFFF;
+        }
+
         public byte[] calculateKeyForCIM(byte[] a_seed)
         {
             int seed = a_seed[0] << 8 | a_seed[1];

@@ -99,6 +99,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Bootloader_legion.cs" />
+    <Compile Include="Bootloader_mpc5566.cs" />
     <Compile Include="CAN\J2534CANDevice.cs" />
     <Compile Include="Checksum\ChecksumDelegate.cs" />
     <Compile Include="Checksum\ChecksumT7.cs" />
@@ -116,6 +117,7 @@
     <Compile Include="Firmware\FileT8mcp.cs" />
     <Compile Include="Firmware\BaseFile.cs" />
     <Compile Include="ITrionic.cs" />
+    <Compile Include="LZ77.cs" />
     <Compile Include="Md5Tools.cs" />
     <Compile Include="FlashReadArguments.cs" />
     <Compile Include="BitTools.cs" />
@@ -134,6 +136,7 @@
     <Compile Include="SeedKey\AlgorithmDictionary.cs" />
     <Compile Include="SeedKey\SeedKeyGM.cs" />
     <Compile Include="SeedKey\Step.cs" />
+    <Compile Include="TargetParameters.cs" />
     <Compile Include="Trionic5.cs" />
     <Compile Include="Trionic7.cs" />
     <Compile Include="flasher\IFlasher.cs" />

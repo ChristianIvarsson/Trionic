@@ -376,7 +376,9 @@ namespace TrionicCANFlasher
                      cbxEcuType.SelectedIndex == (int)ECU.MOTRONIC96 ||
                      cbxEcuType.SelectedIndex == (int)ECU.TRIONIC8_MCP ||
                      cbxEcuType.SelectedIndex == (int)ECU.Z22SEMain_LEG ||
-                     cbxEcuType.SelectedIndex == (int)ECU.Z22SEMCP_LEG)
+                     cbxEcuType.SelectedIndex == (int)ECU.Z22SEMCP_LEG ||
+                     cbxEcuType.SelectedIndex == (int)ECU.DELCOE39 ||
+                     cbxEcuType.SelectedIndex == (int)ECU.DELCOE78)
             {
                 trionic8.Cleanup();
             }
@@ -623,6 +625,23 @@ namespace TrionicCANFlasher
                     btnGetECUInfo.Enabled = false;
                     btnEditParameters.Enabled = false;
                     btnWriteDID.Enabled = false;
+                }
+                else if (cbxEcuType.SelectedIndex == (int)ECU.DELCOE39 || cbxEcuType.SelectedIndex == (int)ECU.DELCOE78)
+                {
+                    btnReadECUcalibration.Enabled = false;
+                    btnWriteDID.Enabled = false;
+                    btnReadDTC.Enabled = false;
+                    btnReadECUcalibration.Enabled = false;
+
+                    btnRecoverECU.Enabled = false;
+
+                    btnRestoreT8.Enabled = false;
+                    btnReadSRAM.Enabled = false;
+
+                    btnGetECUInfo.Enabled = false;
+                    btnEditParameters.Enabled = false;
+                    btnWriteDID.Enabled = false;
+                    btnLogData.Enabled = false;
                 }
             }
 
@@ -1014,6 +1033,64 @@ namespace TrionicCANFlasher
                                 AddLogItem("Connection terminated");
                             }
                         }
+                        if (cbxEcuType.SelectedIndex == (int)ECU.DELCOE78)
+                        {
+                            SetGenericOptions(trionic8);
+
+                            EnableUserInput(false);
+                            AddLogItem("Opening connection");
+                            trionic8.SecurityLevel = AccessLevel.AccessLevel01;
+
+                            if (trionic8.openDevice(false))
+                            {
+                                Thread.Sleep(1000);
+                                dtstart = DateTime.Now;
+                                AddLogItem("Update FLASH content");
+                                Application.DoEvents();
+                                BackgroundWorker bgWorker;
+                                bgWorker = new BackgroundWorker();
+                                bgWorker.DoWork += new DoWorkEventHandler(trionic8.WriteFlashDELCOE78);
+                                bgWorker.RunWorkerCompleted += new RunWorkerCompletedEventHandler(bgWorker_RunWorkerCompleted);
+                                bgWorker.RunWorkerAsync(ofd.FileName);
+                                // bgWorker.RunWorkerAsync("");
+                            }
+                            else
+                            {
+                                AddLogItem("Unable to connect to Z22SE ECU");
+                                trionic8.Cleanup();
+                                EnableUserInput(true);
+                                AddLogItem("Connection terminated");
+                            }
+                        }
+                        else if (cbxEcuType.SelectedIndex == (int)ECU.DELCOE39)
+                        {
+                            SetGenericOptions(trionic8);
+
+                            EnableUserInput(false);
+                            AddLogItem("Opening connection");
+                            trionic8.SecurityLevel = AccessLevel.AccessLevel01;
+
+                            if (trionic8.openDevice(false))
+                            {
+                                Thread.Sleep(1000);
+                                dtstart = DateTime.Now;
+                                AddLogItem("Update FLASH content");
+                                Application.DoEvents();
+                                BackgroundWorker bgWorker;
+                                bgWorker = new BackgroundWorker();
+                                bgWorker.DoWork += new DoWorkEventHandler(trionic8.WriteFlashDELCOE39);
+                                bgWorker.RunWorkerCompleted += new RunWorkerCompletedEventHandler(bgWorker_RunWorkerCompleted);
+                                bgWorker.RunWorkerAsync(ofd.FileName);
+                                // bgWorker.RunWorkerAsync("");
+                            }
+                            else
+                            {
+                                AddLogItem("Unable to connect to Z22SE ECU");
+                                trionic8.Cleanup();
+                                EnableUserInput(true);
+                                AddLogItem("Connection terminated");
+                            }
+                        }
                     }
                 }
             }
@@ -1256,6 +1333,62 @@ namespace TrionicCANFlasher
                                 else
                                 {
                                     AddLogItem("Unable to connect to Z22SE ECU");
+                                    trionic8.Cleanup();
+                                    EnableUserInput(true);
+                                    AddLogItem("Connection terminated");
+                                }
+                            }
+                            if (cbxEcuType.SelectedIndex == (int)ECU.DELCOE39)
+                            {
+                                SetGenericOptions(trionic8);
+
+                                EnableUserInput(false);
+                                AddLogItem("Opening connection");
+                                trionic8.SecurityLevel = AccessLevel.AccessLevel01;
+                                if (trionic8.openDevice(false))
+                                {
+                                    Thread.Sleep(1000);
+                                    dtstart = DateTime.Now;
+                                    AddLogItem("Acquiring FLASH content");
+                                    Application.DoEvents();
+                                    BackgroundWorker bgWorker;
+                                    bgWorker = new BackgroundWorker();
+                                    bgWorker.DoWork += new DoWorkEventHandler(trionic8.ReadE39);
+                                    bgWorker.RunWorkerCompleted += new RunWorkerCompletedEventHandler(bgWorker_RunWorkerCompleted);
+                                    bgWorker.RunWorkerAsync(sfd.FileName);
+                                    // bgWorker.RunWorkerAsync("");
+                                }
+                                else
+                                {
+                                    AddLogItem("Unable to connect to e39 ECU");
+                                    trionic8.Cleanup();
+                                    EnableUserInput(true);
+                                    AddLogItem("Connection terminated");
+                                }
+                            }
+                            else if (cbxEcuType.SelectedIndex == (int)ECU.DELCOE78)
+                            {
+                                SetGenericOptions(trionic8);
+
+                                EnableUserInput(false);
+                                AddLogItem("Opening connection");
+                                trionic8.SecurityLevel = AccessLevel.AccessLevel01;
+                                if (trionic8.openDevice(false))
+                                {
+                                    Thread.Sleep(1000);
+                                    dtstart = DateTime.Now;
+                                    AddLogItem("Acquiring FLASH content");
+                                    Application.DoEvents();
+                                    BackgroundWorker bgWorker;
+                                    bgWorker = new BackgroundWorker();
+                                    bgWorker.DoWork += new DoWorkEventHandler(trionic8.ReadE78);
+                                    bgWorker.RunWorkerCompleted += new RunWorkerCompletedEventHandler(bgWorker_RunWorkerCompleted);
+                                    bgWorker.RunWorkerAsync(sfd.FileName);
+                                    // bgWorker.RunWorkerAsync("");
+                                }
+                                else
+                                {
+                                    AddLogItem("Unable to connect to e78 ECU");
                                     trionic8.Cleanup();
                                     EnableUserInput(true);
                                     AddLogItem("Connection terminated");

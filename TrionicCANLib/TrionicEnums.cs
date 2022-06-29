@@ -63,6 +63,11 @@ namespace TrionicCANLib.API
         [Description("Z22SE; MCP (Experimental)")]
         Z22SEMCP_LEG,
 
+        [Description("ACDelco E39")]
+        DELCOE39,
+        [Description("ACDelco E78")]
+        DELCOE78,
+
 
         // Sorry for moving these but the enumration gets borked when items are "disabled"
 
