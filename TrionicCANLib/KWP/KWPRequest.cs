@@ -121,6 +121,24 @@ namespace TrionicCANLib.KWP
         }
 
         /// <summary>
+        /// Constructor for requests with two PIDs and no data.
+        /// </summary>
+        /// <param name="a_mode">The mode.</param>
+        /// <param name="a_pidHigh">The high PID (the first PID).</param>
+        /// <param name="a_pidLow">The low PID (the second PID).</param>
+        public KWPRequest(byte a_mode, byte a_pidHigh, byte a_pidLow)
+        {
+            int i = 0;
+            byte length = (byte)(3);
+            m_request = new byte[length + 1];
+            m_request[i++] = length;
+            m_request[i++] = a_mode;
+            m_request[i++] = a_pidHigh;
+            m_request[i++] = a_pidLow;
+            m_nrOfPid = 2;
+        }
+
+        /// <summary>
         /// Get the KWPRequest represented as a byte array.
         /// </summary>
         /// <returns>Byte array representing the KWPRequest.</returns>

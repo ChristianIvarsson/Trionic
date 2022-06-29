@@ -19,6 +19,15 @@ namespace TrionicCANLib.KWP
     }
 
     /// <summary>
+    /// Payload descriptor for dynamic id features
+    /// </summary>
+    public struct dynAddrHelper
+    {
+        public byte size;
+        public int address;
+    };
+
+    /// <summary>
     /// KWPHandler implements messages for the KWP2000 (Key Word Protocol 2000) protocol (also called
     /// ISO 14230-4). Not all messages are implemented.
     /// </summary>
@@ -899,6 +908,100 @@ namespace TrionicCANLib.KWP
                 return true;
             else
                 return false;
+        }
+
+        /// <summary>
+        /// Update remote id list
+        /// </summary>
+        /// <param name="dynList">List of addresses to add shortcuts for</param>
+        /// <returns></returns>
+        public bool sendDynamicList(List<dynAddrHelper> dynList)
+        {
+            logger.Trace("sendDynamicList");
+
+            if (dynList == null || dynList.Count == 0 || dynList.Count > 60)
+            {
+                logger.Trace("Empty dynamic list or too many items");
+                sendClearIdList();
+                return false;
+            }
+
+            // Can fit everything in one request
+            if (dynList.Count < 40)
+            {
+                KWPReply reply = new KWPReply();
+                byte[] payload = new byte[dynList.Count*6];
+
+                for (int i = 0; i < dynList.Count; i++)
+                {
+                    payload[(i*6)+0] = 3;
+                    payload[(i*6)+1] = (byte)i;
+                    payload[(i*6)+2] = dynList[i].size;
+                    payload[(i*6)+3] = (byte)(dynList[i].address >> 16);
+                    payload[(i*6)+4] = (byte)(dynList[i].address >> 8);
+                    payload[(i*6)+5] = (byte)(dynList[i].address);
+                }
+
+                var request = new KWPRequest(0x2C, 0xF0, payload);
+                request.ElmExpectedResponses = 1;
+                KWPResult result = sendRequest(request, out reply);
+                return result == KWPResult.OK;
+            }
+            else
+            {
+                KWPReply reply = new KWPReply();
+                byte[] payload1 = new byte[39*6];
+
+                for (int i = 0; i < 39; i++)
+                {
+                    payload1[(i*6)+0] = 3;
+                    payload1[(i*6)+1] = (byte)i;
+                    payload1[(i*6)+2] = dynList[i].size;
+                    payload1[(i*6)+3] = (byte)(dynList[i].address >> 16);
+                    payload1[(i*6)+4] = (byte)(dynList[i].address >> 8);
+                    payload1[(i*6)+5] = (byte)(dynList[i].address);
+                }
+
+                var request = new KWPRequest(0x2C, 0xF0, payload1);
+                request.ElmExpectedResponses = 1;
+                KWPResult result = sendRequest(request, out reply);
+                if (result != KWPResult.OK)
+                    return false;
+                
+                reply = new KWPReply();
+                byte[] payload2 = new byte[(dynList.Count-39)*6];
+
+                for (int i = 0; i < (dynList.Count-39); i++)
+                {
+                    payload2[(i*6)+0] = 3;
+                    payload2[(i*6)+1] = (byte)(i+39);
+                    payload2[(i*6)+2] = dynList[i+39].size;
+                    payload2[(i*6)+3] = (byte)(dynList[i+39].address >> 16);
+                    payload2[(i*6)+4] = (byte)(dynList[i+39].address >> 8);
+                    payload2[(i*6)+5] = (byte)(dynList[i+39].address);
+                }
+
+                request = new KWPRequest(0x2C, 0xF0, payload2);
+                request.ElmExpectedResponses = 1;
+                result = sendRequest(request, out reply);
+                return result == KWPResult.OK;
+            }
+        }
+
+        /// <summary>
+        /// Clear remote id list
+        /// </summary>
+        /// <returns></returns>
+        public bool sendClearIdList()
+        {
+            logger.Trace("sendClearIdList");
+
+            KWPReply reply = new KWPReply();
+            KWPResult result;
+            var request = new KWPRequest(0x2C, 0xF0, 0x04);
+            request.ElmExpectedResponses = 1;
+            result = sendRequest(request, out reply);
+            return result == KWPResult.OK;
         }
 
         /// <summary>
