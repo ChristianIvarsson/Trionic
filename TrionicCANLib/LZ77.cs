@@ -19,6 +19,8 @@ namespace TrionicCANLib
                 lzThread.Abort();
                 lzThread.Join();
             }
+
+            m_queuedCompression = false;
         }
 
         static void lzCompress(byte[] dataIn, out uint outPtr)
@@ -106,7 +108,7 @@ namespace TrionicCANLib
                 }
             }
 
-            catch (Exception e)
+            catch (Exception)
             {
                 outPtr = 0;
             }
@@ -173,6 +175,7 @@ namespace TrionicCANLib
             }
 
             lzThread.Join();
+            m_queuedCompression = false;
 
             Array.Resize(ref m_compressedData, (int)m_compressedLen);
             return m_compressedData;
@@ -213,7 +216,7 @@ namespace TrionicCANLib
             }
 
             // Catch all
-            catch (Exception e)
+            catch (Exception)
             {
                 return null;
             }
