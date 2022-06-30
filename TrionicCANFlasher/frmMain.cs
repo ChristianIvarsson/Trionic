@@ -708,7 +708,7 @@ namespace TrionicCANFlasher
 
             using (OpenFileDialog ofd = new OpenFileDialog() { Filter = "Bin files|*.bin", Multiselect = false })
             {
-                // if (ofd.ShowDialog() == DialogResult.OK)
+                if (ofd.ShowDialog() == DialogResult.OK)
                 {
                     if (checkFileSize(ofd.FileName))
                     {
