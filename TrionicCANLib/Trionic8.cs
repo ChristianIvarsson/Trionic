@@ -9375,8 +9375,8 @@ namespace TrionicCANLib.API
 
                 SendKeepAlive();
 
-                readSRAMe39(workEvent, mpc5566Mode.modeE39);
-                return;
+                // readSRAMe39(workEvent, mpc5566Mode.modeE39);
+                // return;
 
                 if (!UploadMPC5566Loader(e39e78LoaderBase, mpc5566Mode.modeE39))
                     return;
@@ -10071,8 +10071,8 @@ namespace TrionicCANLib.API
             uint lockedPartitions = 0; // Protect boot partitions
             uint forcedPartitions = 0;
 
-            CastInfoEvent("Currently disabled for your safety", ActivityType.ConvertingFile);
-            return;
+            // CastInfoEvent("Currently disabled for your safety", ActivityType.ConvertingFile);
+            // return;
 
             // I know how to brick my ECU, believe me!
             // BAMflash(e39e78LoaderBase);
