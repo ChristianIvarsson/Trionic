@@ -688,6 +688,7 @@ namespace TrionicCANFlasher
 
         private void btnFlashEcu_Click(object sender, EventArgs e)
         {
+            /*
             DialogResult result = DialogResult.Cancel;
             if (cbxEcuType.SelectedIndex == (int)ECU.TRIONIC8 || cbxEcuType.SelectedIndex == (int)ECU.MOTRONIC96 ||
                 cbxEcuType.SelectedIndex == (int)ECU.TRIONIC8_MCP ||
@@ -703,11 +704,11 @@ namespace TrionicCANFlasher
             if (result == DialogResult.Cancel && cbxEcuType.SelectedIndex != (int)ECU.TRIONIC5)
             {
                 return;
-            }
+            }*/
 
             using (OpenFileDialog ofd = new OpenFileDialog() { Filter = "Bin files|*.bin", Multiselect = false })
             {
-                if (ofd.ShowDialog() == DialogResult.OK)
+                // if (ofd.ShowDialog() == DialogResult.OK)
                 {
                     if (checkFileSize(ofd.FileName))
                     {
