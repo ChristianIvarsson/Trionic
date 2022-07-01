@@ -9709,7 +9709,7 @@ namespace TrionicCANLib.API
             }
 
             // Confirmation blah.. blah..
-            if ((mask & 0x10000000) > 0)
+            if ((mask & 0x10000000) != 0)
             {
                 CastInfoEvent("Shadow block is different!", ActivityType.ConvertingFile);
             }
@@ -9734,6 +9734,10 @@ namespace TrionicCANLib.API
             }
 
             CastInfoEvent("Partition mask: " + mask.ToString("X8") + " (" + (totLen / 1024).ToString("D") + " kilobytes)", ActivityType.ConvertingFile);
+            // LegionRequestexit();
+            // workEvent.Result = true;
+            // return;
+ 
             const uint defChunk = 128 * 1024;
             bool useCompression = true;
             bool restartLz = true;
@@ -9741,6 +9745,7 @@ namespace TrionicCANLib.API
             // uint inducedFault = 1;
             int partition = 0;
             uint totLoc = 0;
+            uint actSent = 0;
 
             LZ77 lzComp = new LZ77();
 
@@ -9836,6 +9841,7 @@ namespace TrionicCANLib.API
                                         // Send previously queued data
                                         if (transferLzData32(compressed, oldstart, oldlen))
                                         {
+                                            actSent += (uint)compressed.Length;
                                             // Verify written partition
                                             // if (true) // 
                                             if (!mpc5566Different(tparam, filebytes, (uint)partition, true)/* && inducedFault != 0*/)
@@ -9875,6 +9881,7 @@ namespace TrionicCANLib.API
                                     }
                                     else
                                     {
+                                        actSent += (uint)compressed.Length;
                                         totLoc += oldlen;
                                         int percentage = (int)(((float)totLoc * 100) / (float)totLen);
                                         if (percentage != saved_progress)
@@ -9961,6 +9968,7 @@ namespace TrionicCANLib.API
                                 {
                                     retries = 5;
                                     totLoc += blockSize;
+                                    actSent += blockSize;
                                 }
 
                                 int percentage = (int)(((float)totLoc * 100) / (float)totLen);
@@ -9994,6 +10002,9 @@ namespace TrionicCANLib.API
             }
 
             LegionRequestexit();
+            
+            // Simple debug. Fun to know how much lz helped
+            CastInfoEvent("Sent a total of " + actSent.ToString("D") + " bytes to the target", ActivityType.ConvertingFile);
             CastInfoEvent("Write done", ActivityType.ConvertingFile);
             workEvent.Result = true;
         }
