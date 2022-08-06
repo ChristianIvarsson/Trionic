@@ -23,11 +23,6 @@ namespace TrionicCANLib.CAN
         public const string CAN_BAUD_BTR_33K  = "0x8B:0x2F"; //  33,333 kbit/s SAAB GMLAN
         public const string CAN_BAUD_BTR_47K  = "0xcb:0x9a"; //  47,619 kbit/s SAAB T7 I-bus
         public const string CAN_BAUD_BTR_615K = "0x40:0x37"; // 615,384 kbit/s SAAB Trionic 5 P-bus (69% Sampling)
-
-        public const string CAN_BAUD_BTR_200K = "0x01:0x2f"; // 200 Kbit/s. SP: 85%, sjw: 1
-        // public const string CAN_BAUD_BTR_300K = "0x42:0x15"; // 300 Kbit/s BAM
-        public const string CAN_BAUD_BTR_400K = "0x00:0x2f"; // 400 Kbit/s. SP: 85%, sjw: 1
-
         public const string CAN_BAUD_BTR_1M = "0x80:0x14";
 
         static uint m_deviceHandle = 0;

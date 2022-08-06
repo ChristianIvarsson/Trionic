@@ -9399,126 +9399,6 @@ namespace TrionicCANLib.API
             mpc5566ActDump(workEvent, mpc5566Mode.modeE39);
         }
 
-        // ulong bamKEY = 0x7BC10CBD55EBB2DA; // E78
-        // ulong bamKEY =       0xFEEDFACECAFEBEEF; // Public
-        ulong bamKEY    = 0xFD13031FFB1D0521; // 881155AA
-        //             0x________________; // Since the editor is ***...
-        // ulong bamKEY  = 0xFFFFFFFFFFFFFFFF;
-        ulong lazySWAP(ulong data)
-        {
-            ulong retval = 0;
-            for (int i = 0; i < 8; i++)
-            {
-                retval <<= 8;
-                retval |= (data & 0xff);
-                data >>= 8;
-            }
-            return retval;
-        }
-
-        // To be moved somewhere else. It's only here while in the thrash branch
-        private bool BAMflash(uint address)
-        {
-            CANMessage msg = new CANMessage(0x11, 0, 8);
-            CANMessage response = new CANMessage();
-            uint tries = 10;
-            ulong cmd = lazySWAP(bamKEY);
-            ulong respData = 0;
-            do
-            {
-                msg.setData(cmd);
-                m_canListener.setupWaitMessage(1);
-                if (!canUsbDevice.sendMessage(msg))
-                {
-                    CastInfoEvent("Couldn't send message", ActivityType.ConvertingFile);
-                    return false;
-                }
-                
-                response = m_canListener.waitMessage(90);
-                respData = response.getData();
-                // tries--;
-                if (tries == 0)
-                {
-                    CastInfoEvent("Could not start BAM", ActivityType.ConvertingFile);
-                    return false;
-                }
-            } while (respData != lazySWAP(bamKEY));
-
-            // if (respData == lazySWAP(bamKEY))
-            {
-                CastInfoEvent("Key accepted", ActivityType.ConvertingFile);
-                Bootloader_mpc5566 m_bootloader = new TrionicCANLib.Bootloader_mpc5566();
-                uint bytesLeft = (uint)m_bootloader.Bootloader_mpc5566Bytes.Length;
-                byte[] allignedData = new byte[(bytesLeft&~7) + 8];
-                uint i;
-                for (i = 0; i < bytesLeft; i++)
-                {
-                    allignedData[i] = m_bootloader.Bootloader_mpc5566Bytes[i];
-                }
-                for (; i < allignedData.Length; i++)
-                {
-                    allignedData[i] = 0;
-                }
-
-                bytesLeft = (uint)(allignedData.Length);
-
-                msg = new CANMessage(0x12, 0, 8);
-                cmd = lazySWAP((ulong) address << 32 | bytesLeft);
-                msg.setData(cmd);
-
-                m_canListener.setupWaitMessage(2);
-                if (!canUsbDevice.sendMessage(msg))
-                {
-                    CastInfoEvent("Couldn't send message", ActivityType.ConvertingFile);
-                    // Do not return here want to wait for the response
-                }
-
-                response = m_canListener.waitMessage(200);
-                respData = response.getData();
-                uint bufPntr = 0;
-
-                if (respData == cmd)
-                {
-                    CastInfoEvent("Address and length accepted", ActivityType.ConvertingFile);
-
-                    msg = new CANMessage(0x13, 0, 8);
-                    while (bytesLeft > 0)
-                    {
-                        cmd = 0;
-                        for (int e = 0; e < 8; e++)
-                        {
-                            cmd |= (ulong)allignedData[bufPntr++] << (e * 8);
-                        }
-
-                        cmd = lazySWAP(cmd);
-                        msg.setData(lazySWAP(cmd));
-
-                        m_canListener.setupWaitMessage(3);
-                        if (!canUsbDevice.sendMessage(msg))
-                        {
-                            CastInfoEvent("Couldn't send message", ActivityType.ConvertingFile);
-                            // Do not return here want to wait for the response
-                        }
-
-                        response = m_canListener.waitMessage(200);
-                        respData = response.getData();
-
-                        if (respData != lazySWAP(cmd))
-                        {
-                            CastInfoEvent("Did not receive the same data: " + respData.ToString("X16"), ActivityType.ConvertingFile);
-                            return false;
-                        }
-
-                        bytesLeft -= 8;
-                    }
-
-                    return true;
-                }
-
-            }
-            return false;
-        }
-
         private bool mpc5566Different(TargetParameters tparam, byte[] filebytes, uint partition, bool shutup)
         {
             uint[] part = tparam.PartitionToAddress(partition);
@@ -9645,8 +9525,6 @@ namespace TrionicCANLib.API
             // Must be manually enabled for now...
             formatBootPartition = false;
 
-
-
             // Only shadow is checked in here. It's up to the other functions to determine additional boot and system partitions
             // Reason: Same code is used on E39 and E78, they have different needs
             int maxPartition = (int)tparam.NumberOfPartitions();
@@ -9669,21 +9547,14 @@ namespace TrionicCANLib.API
             mask |= forceMask; // Append forced partitions
             mask &= ~lockMask; // Remove locked partitions
 
-            /*
-            // Only used while figuring out which partitions are used!
-            mask = (1 << 28) - 1;
-            if (startRoutineById_leg(1, mask, ~mask))
+            // Recovery is looking for a few magic bytes. Make sure they are not there while flashing the main binary
+            if (target == ECU.DELCOE39)
             {
-                requestRoutineResult_leg(1, out bool success);
-                if (!success)
+                if ((mask & 0xFFFFF00) > 0)
                 {
-                    CastInfoEvent("Could not erase partition to be written", ActivityType.ConvertingFile);
-                    return;
+                    mask |= 0x8000100;
                 }
             }
-
-            mask = 0x7;
-            */
 
             // TODO:
             // Always backup shadow key, no matter which settings are used, sneak it in somewhere...
@@ -9749,6 +9620,22 @@ namespace TrionicCANLib.API
 
             LZ77 lzComp = new LZ77();
 
+            CastInfoEvent("Erasing..", ActivityType.ConvertingFile);
+            if (startRoutineById_leg(1, mask, ~mask))
+            {
+                requestRoutineResult_leg(1, out bool success);
+                if (!success)
+                {
+                    CastInfoEvent("Could not erase partitions to be written", ActivityType.ConvertingFile);
+                    return;
+                }
+            }
+            else
+            {
+                CastInfoEvent("Could not erase partitions to be written", ActivityType.ConvertingFile);
+                return;
+            }
+
             while (partition < maxPartition)
             {
                 if ((mask & ((uint)1 << partition)) > 0)
@@ -9772,24 +9659,6 @@ namespace TrionicCANLib.API
 
                     uint physStart = (start >= 0x300000) ? ((start & 0x3FF) + 0xFFFC00) : start;
                     uint physEnd = physStart + (end - start);
-
-                    // Erase partitions one and one;
-                    // Reason is I don't fully trust lz yet. No matter what happens, hardware locks prevents corruption of other partitions
-                    CastInfoEvent("Erasing: " + physStart.ToString("X6") + " - " + (physEnd - 1).ToString("X6"), ActivityType.ConvertingFile);
-                    if (startRoutineById_leg(1, (uint)(1 << partition), ~(uint)(1 << partition)))
-                    {
-                        requestRoutineResult_leg(1, out bool success);
-                        if (!success)
-                        {
-                            CastInfoEvent("Could not erase partition to be written", ActivityType.ConvertingFile);
-                            return;
-                        }
-                    }
-                    else
-                    {
-                        CastInfoEvent("Could not erase partition to be written", ActivityType.ConvertingFile);
-                        return;
-                    }
 
                     CastInfoEvent("Writing: " + physStart.ToString("X6") + " - " + (physEnd - 1).ToString("X6"), ActivityType.ConvertingFile);
 
@@ -10020,10 +9889,6 @@ namespace TrionicCANLib.API
             CastInfoEvent("Currently disabled for your safety", ActivityType.ConvertingFile);
             return;
 
-            // I know how to brick my ECU, believe me!
-            // BAMflash(e39e78LoaderBase);
-            // Thread.Sleep(1000);
-
             _stallKeepAlive = true;
 
             CastInfoEvent("Polling id 90 to determine state", ActivityType.ConvertingFile);
@@ -10084,10 +9949,6 @@ namespace TrionicCANLib.API
 
             // CastInfoEvent("Currently disabled for your safety", ActivityType.ConvertingFile);
             // return;
-
-            // I know how to brick my ECU, believe me!
-            // BAMflash(e39e78LoaderBase);
-            // Thread.Sleep(500);
 
             _stallKeepAlive = true;
 
