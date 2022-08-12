@@ -8,7 +8,6 @@ namespace TrionicCANLib.API
 {
     public static class EnumHelper
     {
-
         public static string GetDescription(Enum value)
         {
             FieldInfo fi = value.GetType().GetField(value.ToString());

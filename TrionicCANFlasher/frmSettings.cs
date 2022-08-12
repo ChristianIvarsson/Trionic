@@ -4,6 +4,9 @@ using System.Windows.Forms;
 using TrionicCANLib.API;
 using Microsoft.Win32;
 using NLog;
+using System.Collections.Generic;
+using System.Collections;
+using FlasherSettings;
 
 namespace TrionicCANFlasher
 {
@@ -180,7 +183,6 @@ namespace TrionicCANFlasher
             get { return _m_interframe;  }
             set { _m_interframe = value; }
         }
-
 
         public bool RememberDimensions
         {
@@ -640,6 +642,8 @@ namespace TrionicCANFlasher
             }
         }
 
+        private int m_ecuindex = -1;
+
         /// <summary>
         /// This method determines what should be enabled / shown depending on what the user has selected
         /// </summary>
@@ -648,9 +652,7 @@ namespace TrionicCANFlasher
             // Check if we're being populated or if the user did something
             if (!m_lockout)
             {
-
                 int typeindex = cbxAdapterType.SelectedIndex;
-                int ecuindex = SelectedECU.Index;
 
                 cbOnboardFlasher.Enabled = false;
                 cbEnableLogging.Enabled = true;
@@ -696,19 +698,19 @@ namespace TrionicCANFlasher
 
                 if (typeindex >= 0)
                 {
-                    if (ecuindex == (int)ECU.TRIONIC5)
+                    if (m_ecuindex == (int)ECU.TRIONIC5)
                     {
                         cbOnlyPBus.Enabled = false;
                         cbAutoChecksum.Enabled = true;
                     }
 
-                    else if (ecuindex == (int)ECU.TRIONIC7)
+                    else if (m_ecuindex == (int)ECU.TRIONIC7)
                     {
                         cbOnboardFlasher.Enabled = typeindex == (int)CANBusAdapter.COMBI ? cbOnlyPBus.Checked : false;
                         cbAutoChecksum.Enabled = true;
                     }
 
-                    else if (ecuindex == (int)ECU.TRIONIC8)
+                    else if (m_ecuindex == (int)ECU.TRIONIC8)
                     {
                         cbUseLegion.Enabled = true;
                         cbUnlockSys.Enabled = cbUseLegion.Checked;
@@ -721,20 +723,31 @@ namespace TrionicCANFlasher
                         cbAutoChecksum.Enabled = true;
                     }
 
-                    else if (ecuindex == (int)ECU.TRIONIC8_MCP)
+                    else if (m_ecuindex == (int)ECU.TRIONIC8_MCP)
                     {
                         cbUseLegion.Checked = true;
                         cbUnlockBoot.Enabled = true;
                     }
 
-                    else if (ecuindex == (int)ECU.MOTRONIC96)
+                    else if (m_ecuindex == (int)ECU.MOTRONIC96)
                     {
                         cbUnlockSys.Enabled = true;
                     }
 
-                    else if (ecuindex == (int)ECU.DELCOE39 || ecuindex == (int)ECU.DELCOE78)
+                    else if (m_ecuindex == (int)ECU.DELCOE39)
                     {
-                        // cbUnlockSys.Enabled = true;
+                        cbUnlockSys.Enabled = true;
+                        cbUnlockBoot.Enabled = (cbUnlockSys.Checked && cbUnlockSys.Enabled);
+
+                        if (!cbUnlockSys.Checked)
+                        {
+                            cbUnlockBoot.Checked = false;
+                        }
+                    }
+
+                    else if (m_ecuindex == (int)ECU.DELCOE78)
+                    {
+                        // No options atm..
                     }
 
                     // Other ECUs do not have power user features
@@ -770,15 +783,15 @@ namespace TrionicCANFlasher
 
                     if (cbEnableSUFeatures)
                     {
-                        bool precheck = ((ecuindex == (int)ECU.TRIONIC8 && cbUseLegion.Checked && cbUseLegion.Enabled) ||
-                            ecuindex == (int)ECU.TRIONIC8_MCP || ecuindex == (int)ECU.Z22SEMain_LEG || ecuindex == (int)ECU.Z22SEMCP_LEG ||
-                            ecuindex == (int)ECU.DELCOE39     || ecuindex == (int)ECU.DELCOE78);
+                        bool precheck = ((m_ecuindex == (int)ECU.TRIONIC8 && cbUseLegion.Checked && cbUseLegion.Enabled) ||
+                            m_ecuindex == (int)ECU.TRIONIC8_MCP || m_ecuindex == (int)ECU.Z22SEMain_LEG || m_ecuindex == (int)ECU.Z22SEMCP_LEG ||
+                            m_ecuindex == (int)ECU.DELCOE39     || m_ecuindex == (int)ECU.DELCOE78);
 
                         InterframeLabel.Enabled = precheck;
                         cbxInterFrame.Enabled = precheck;
-                        cbUseLastPointer.Enabled = (ecuindex == (int)ECU.TRIONIC8 && cbUseLegion.Checked && cbUseLegion.Enabled);
+                        cbUseLastPointer.Enabled = (m_ecuindex == (int)ECU.TRIONIC8 && cbUseLegion.Checked && cbUseLegion.Enabled);
                         cbFaster.Enabled = precheck;
-                        cbVerifyChecksum.Enabled = (ecuindex == (int)ECU.TRIONIC8 || ecuindex == (int)ECU.TRIONIC7 || ecuindex == (int)ECU.TRIONIC5);
+                        cbVerifyChecksum.Enabled = (m_ecuindex == (int)ECU.TRIONIC8 || m_ecuindex == (int)ECU.TRIONIC7 || m_ecuindex == (int)ECU.TRIONIC5);
                     }
                     else
                     {
@@ -807,12 +820,7 @@ namespace TrionicCANFlasher
             }
         }
 
-        /// <summary>
-        /// Dialog has been shown. Now populate it with current settings
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void DialogShown(object sender, EventArgs e)
+        private void LoadHandler()
         {
             // Reset click counter
             if (m_hiddenclicks > 0)
@@ -825,6 +833,327 @@ namespace TrionicCANFlasher
 
             LoadItems();
             SettingsLogic();
+        }
+
+        private class BoolChanged
+        {
+            public BoolChanged(int itemindex, CustomSettings settings)
+            {
+                Index = itemindex;
+                Settings = settings;
+            }
+
+            public void EventHandler(object sender, EventArgs e)
+            {
+                CheckBox cbx = (CheckBox)sender;
+                Settings.Settings[Index].Value = (bool)cbx.Checked;
+                Settings.PerformTargetLogic();
+            }
+
+            private int Index;
+            private CustomSettings Settings;
+        }
+
+        private class IndexChanged
+        {
+            public IndexChanged(int itemindex, CustomSettings settings)
+            {
+                Index = itemindex;
+                Settings = settings;
+            }
+
+            public void EventHandler(object sender, EventArgs e)
+            {
+                ComboBox combo = (ComboBox)sender;
+                Settings.Settings[Index].Value = (int)combo.SelectedIndex;
+                Settings.PerformTargetLogic();
+            }
+
+            private int Index;
+            private CustomSettings Settings;
+        }
+
+        private class IntChanged
+        {
+            public IntChanged(int itemindex, CustomSettings settings)
+            {
+                Index = itemindex;
+                Settings = settings;
+            }
+
+            public void EventHandler(object sender, EventArgs e)
+            {
+                NumericUpDown scroll = (NumericUpDown)sender;
+                Settings.Settings[Index].Value = (int)scroll.Value;
+                Settings.PerformTargetLogic();
+            }
+
+            private int Index;
+            private CustomSettings Settings;
+        }
+
+        private class CustomSettings
+        {
+            public CustomSettings(ITrionic Instance, ECU ecu, System.Drawing.Size origsize)
+            {
+                m_ecu = ecu;
+                m_instance = Instance;
+                Manager = new SettingsManager(Instance, Instance.GetSettings(ecu));
+                Settings = Manager.GetLocalCopy();
+                OriginalWindowSize = origsize;
+            }
+
+            public void AddBool(int index, CheckBox box)
+            {
+                BoolChanged boolhandle = new BoolChanged(index, this);
+                box.CheckedChanged += boolhandle.EventHandler;
+                BoolHandlers.Add(boolhandle);
+                AddedItems.Add(box);
+            }
+
+            public void AddInt(int index, NumericUpDown scroll)
+            {
+                IntChanged inthandle = new IntChanged(index, this);
+                scroll.ValueChanged += inthandle.EventHandler;
+                ScrollHandlers.Add(inthandle);
+                AddedItems.Add(scroll);
+            }
+
+            public void AddIndex(int index, ComboBox scroll)
+            {
+                IndexChanged indexhandle = new IndexChanged(index, this);
+                scroll.SelectedIndexChanged += indexhandle.EventHandler;
+                IndexHandlers.Add(indexhandle);
+                AddedItems.Add(scroll);
+            }
+
+            public void PerformTargetLogic()
+            {
+                if (IgnoreLogic == false)
+                {
+                    m_instance.TargetSettingsLogic(m_ecu, ref Manager);
+
+                    for (int i = 0; i < AddedItems.Count && i < Settings.Count; i++)
+                    {
+                        AddedItems[i].Enabled = Settings[i].Enabled;
+                    }
+                }
+            }
+
+            public void AddLabel(Label lab)
+            {
+                LabelItems.Add(lab);
+            }
+
+            public void ClearVisibleElements(Control.ControlCollection ctrl)
+            {
+                foreach (Control itm in AddedItems)
+                {
+                    ctrl.Remove(itm);
+                }
+                AddedItems.Clear();
+
+                foreach (Control itm in LabelItems)
+                {
+                    ctrl.Remove(itm);
+                }
+                LabelItems.Clear();
+            }
+
+            private List<BoolChanged> BoolHandlers = new List<BoolChanged>();
+            private List<IntChanged> ScrollHandlers = new List<IntChanged>();
+            private List<IndexChanged> IndexHandlers = new List<IndexChanged>();
+            private ITrionic m_instance;
+            private ECU m_ecu;
+
+            public readonly List<SettingCopy> Settings;
+            private readonly List<Control> AddedItems = new List<Control>();
+            public readonly List<Control> LabelItems = new List<Control>();
+            public readonly System.Drawing.Size OriginalWindowSize;
+
+            public bool IgnoreLogic = true;
+            public SettingsManager Manager;
+        }
+
+        private CustomSettings m_custSet = null;
+
+        private void RemoveCustomItems()
+        {
+            if (m_custSet != null)
+            {
+                this.ClientSize = m_custSet.OriginalWindowSize;
+                m_custSet.ClearVisibleElements(this.Controls);
+            }
+
+            m_custSet = null;
+        }
+
+        public void PopulateItems(ITrionic Instance, ECU ecu)
+        {
+            m_ecuindex = (int)ecu;
+
+            RemoveCustomItems();
+
+            LoadHandler();
+
+            int XSize = this.ClientSize.Width;
+            int YSize = this.ClientSize.Height;
+
+            m_custSet = new CustomSettings(Instance, ecu, this.ClientSize);
+            m_custSet.IgnoreLogic = true;
+
+            if (YSize > 64 && XSize > 100)
+            {
+                SettingsManager setmgr = m_custSet.Manager;
+                List<SettingCopy> sets = m_custSet.Settings;
+                
+                // Dimension of button
+                // xx, 44;
+                // Dimension of checkbox (Vertical spacing: 23)
+                // xx, 17
+                // Dimension of label
+                // xx, 13
+                // Dimension of Drop-down
+                // xx, 21
+
+                // Tab index stuff??
+                // Label
+                // CheckBox
+                // ComboBox
+                // NumericUpDown
+
+                // Even items are left-aligned, odd centre-right-aligned
+                bool even = true;
+
+                for (int i = 0; i < sets.Count; i++)
+                {
+                    Type type = sets[i].Type;
+                    Object value = sets[i].Value;
+                    Object[] listvals = sets[i].ListValues;
+
+                    // Look ahead and push down if there's a list present
+                    if (even)
+                    {
+                        if ((i + 1) < sets.Count)
+                        {
+                            Type nexttype = sets[i+1].Type;
+                            Object[] nextlist = sets[i+1].ListValues;
+
+                            if ((type == typeof(int) && listvals != null) ||
+                                (nexttype == typeof(int) && nextlist != null))
+                            {
+                                YSize += 40;
+                            }
+                        }
+                        else
+                        {
+                            if (type == typeof(int) && listvals != null)
+                            {
+                                YSize += 40;
+                            }
+                        }
+                    }
+
+                    if (value != null)
+                    {
+                        if (type == typeof(int))
+                        {
+                            Label lbl = new Label();
+                            lbl.AutoSize = true;
+                            // lbl.Location = new System.Drawing.Point(191, 49);
+                            lbl.Name = "lbl_" + sets[i].DisplayName;
+                            lbl.Size = new System.Drawing.Size((XSize / 2) - 20, 13);
+                            // lbl.TabIndex = 82;
+                            lbl.Text = sets[i].DisplayName;
+                            lbl.Left = (even) ? 9 : (13 + (XSize / 2));
+                            lbl.Top = YSize - 109;
+
+                            m_custSet.AddLabel(lbl);
+                            this.Controls.Add(lbl);
+
+                            if (listvals == null)
+                            {
+                                // No list of values so.. Numero up down it is
+                                NumericUpDown Numero = new NumericUpDown();
+                                Numero.AutoSize = true;
+                                Numero.ForeColor = System.Drawing.Color.Black;
+                                Numero.Name = "upd_" + sets[i].DisplayName;
+                                Numero.Text = sets[i].DisplayName;
+                                Numero.Size = new System.Drawing.Size((XSize / 2) - 20, 17);
+                                Numero.Left = (even) ? 12 : (16 + (XSize / 2));
+                                Numero.Top = YSize - 95; // 90
+                                Numero.Maximum = Int32.MaxValue;
+                                Numero.Minimum = Int32.MinValue;
+                                Numero.Value = (int)value;
+
+                                m_custSet.AddInt(i, Numero);
+                                this.Controls.Add(Numero);
+                            }
+                            else
+                            {
+                                // There's a list so make it a dropdown type
+                                ComboBox ddown = new ComboBox();
+                                ddown.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+                                ddown.FormattingEnabled = true;
+                                // ddown.Location = new System.Drawing.Point(194, 65);
+                                // ddown.TabIndex = 81;
+                                ddown.Items.AddRange(listvals);
+                                ddown.Name = "drp_" + sets[i].DisplayName;
+                                ddown.Size = new System.Drawing.Size(150, 21);
+                                ddown.SelectedIndex = (int)value;
+                                ddown.Left = (even) ? 12 : (16 + (XSize / 2));
+                                ddown.Top = YSize - 95; // 90
+
+                                m_custSet.AddIndex(i, ddown);
+                                this.Controls.Add(ddown);
+                            }
+
+                            even = !even;
+                        }
+                        else if (type == typeof(bool))
+                        {
+                            CheckBox cbox = new CheckBox();
+                            cbox.AutoSize = true;
+                            cbox.ForeColor = System.Drawing.Color.Black;
+                            cbox.Name = "cbx_" + sets[i].DisplayName;
+                            cbox.Text = sets[i].DisplayName;
+                            cbox.Size = new System.Drawing.Size((XSize / 2) - 20, 17);
+                            cbox.Checked = (bool)value;
+
+                            if (even)
+                            {
+                                cbox.Left = 12;
+                                YSize += 23;
+                            }
+                            else
+                            {
+                                cbox.Left = 16 + (XSize / 2);
+                            }
+
+                            cbox.Top = YSize - 90;
+                            even = !even;
+
+                            m_custSet.AddBool(i, cbox);
+                            this.Controls.Add(cbox);
+                        }
+                    }
+                }
+
+                this.ClientSize = new System.Drawing.Size(XSize, YSize);
+            }
+
+            m_custSet.IgnoreLogic = false;
+            m_custSet.PerformTargetLogic();
+        }
+
+        /// <summary>
+        /// Dialog has been shown. Now populate it with current settings
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void DialogShown(object sender, EventArgs e)
+        {
+            // LoadHandler();
         }
 
         private void cbxAdapterType_SelectedIndexChanged(object sender, EventArgs e)
@@ -878,14 +1207,15 @@ namespace TrionicCANFlasher
         private void btnSave_Click(object sender, EventArgs e)
         {
             StoreItems();
+
+            if (m_custSet != null)
+            {
+                m_custSet.Manager.StoreLocalCopy();
+            }
+
             this.Close();
         }
 
-        private void bntDiscard_Click(object sender, EventArgs e)
-        {
-            this.Close();
-        }
-        
         /// <summary>
         /// Enable super user options by clicking "Advanced features" 6 times
         /// </summary>

@@ -25,9 +25,11 @@ namespace TrionicCANLib.API
         DownloadingFooter,
         FinishedDownloadingFooter,
         CalculatingChecksum,
-        QueryingECUTypeInfo
+        QueryingECUTypeInfo,
+        TransferLayer,
+        QueryingTroubleCodes
     }
-    
+
     public enum CANBusAdapter : int
     {
         [Description("Lawicel CANUSB")]
@@ -67,7 +69,6 @@ namespace TrionicCANLib.API
         DELCOE39,
         [Description("ACDelco E78")]
         DELCOE78,
-
 
         // Sorry for moving these but the enumration gets borked when items are "disabled"
 

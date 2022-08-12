@@ -5,14 +5,35 @@ using System.Runtime.InteropServices;
 using TrionicCANLib.CAN;
 using NLog;
 using System.ComponentModel;
+using FlasherSettings;
 
 namespace TrionicCANLib.API
 {
+    public class WorkerArgument
+    {
+        public string FileName = "";
+        public ECU ecu = (ECU)(int)-1;
+    }
+
+    public class TargetFeatures
+    {
+        virtual public bool FlashFull { get { return false; } }
+        virtual public bool FlashCalib { get { return false; } }
+        virtual public bool ReadFull { get { return false; } }
+        virtual public bool ReadCalib { get { return false; } }
+        virtual public bool ReadSram { get { return false; } }
+        virtual public bool FirmwareInfo { get { return false; } }
+        virtual public bool TroubleCodes { get { return false; } }
+        virtual public bool Recover { get { return false; } }
+        virtual public bool Restore { get { return false; } }
+    }
+    
     abstract public class ITrionic
     {
         private static Logger logger = LogManager.GetCurrentClassLogger();
-        protected ICANDevice canUsbDevice;
-        private CANListener m_canLogListener;
+        internal ICANDevice canUsbDevice = null;
+        internal CANListener canListener = null;
+        private CANListener m_canLogListener = null;
 
         public delegate void WriteProgress(object sender, WriteProgressEventArgs e);
         public event ITrionic.WriteProgress onWriteProgress;
@@ -163,7 +184,7 @@ namespace TrionicCANLib.API
             }
         }
 
-        protected void CastInfoEvent(string info, ActivityType type)
+        public void CastInfoEvent(string info, ActivityType type)
         {
             logger.Debug(info);
             if (onCanInfo != null)
@@ -347,5 +368,78 @@ namespace TrionicCANLib.API
             public byte size;
             public int address;
         };
+
+        public virtual bool FormatBootPartition
+        {
+            get { return false; }
+            set { }
+        }
+
+        public virtual bool FormatSystemPartitions
+        {
+            get { return false; }
+            set { }
+        }
+
+        public virtual bool openDevice(bool requestSecurityAccess)
+        {
+            return false;
+        }
+
+        //////////////////////////
+        // Test code
+
+        public virtual void ReadFlash(object sender, DoWorkEventArgs workEvent)
+        {
+            workEvent.Result = false;
+        }
+
+        public virtual void ReadCal(object sender, DoWorkEventArgs workEvent)
+        {
+            workEvent.Result = false;
+        }
+
+        public virtual void WriteFlash(object sender, DoWorkEventArgs workEvent)
+        {
+            workEvent.Result = false;
+        }
+
+        public virtual void WriteCal(object sender, DoWorkEventArgs workEvent)
+        {
+            workEvent.Result = false;
+        }
+
+        public virtual void ReadSram(object sender, DoWorkEventArgs workEvent)
+        {
+            workEvent.Result = false;
+        }
+
+        public virtual void GetFirmwareInfo(object sender, DoWorkEventArgs workEvent)
+        {
+            workEvent.Result = false;
+        }
+
+        public virtual void ReadTroubleCodes(object sender, DoWorkEventArgs workEvent)
+        {
+            workEvent.Result = false;
+        }
+
+        public SettingProperties BaseSettings = new SettingProperties();
+
+        public virtual ref SettingProperties GetSettings(ECU ecu)
+        {
+            return ref BaseSettings;
+        }
+
+        public TargetFeatures BaseFeatures = new TargetFeatures();
+
+        public virtual ref TargetFeatures GetFeatures(ECU ecu)
+        {
+            return ref BaseFeatures;
+        }
+
+        public virtual void TargetSettingsLogic(ECU ecu, ref SettingsManager manager)
+        {
+        }
     }
 }

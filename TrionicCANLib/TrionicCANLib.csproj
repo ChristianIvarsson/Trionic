@@ -98,18 +98,22 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Bootloader_legion.cs" />
-    <Compile Include="Bootloader_mpc5566.cs" />
+    <Compile Include="bootloaders\Bootloader_mpc5566.cs" />
     <Compile Include="CAN\J2534CANDevice.cs" />
     <Compile Include="Checksum\ChecksumDelegate.cs" />
+    <Compile Include="Checksum\ChecksumE39.cs" />
     <Compile Include="Checksum\ChecksumT7.cs" />
     <Compile Include="Checksum\ChecksumT5.cs" />
     <Compile Include="Checksum\ChecksumT8.cs" />
     <Compile Include="Checksum\ChecksumResult.cs" />
     <Compile Include="Checksum\T7FileHeader.cs" />
+    <Compile Include="e39.cs" />
     <Compile Include="FileTools.cs" />
     <Compile Include="EnumHelper.cs" />
     <Compile Include="CAN\KvaserCANDevice.cs" />
+    <Compile Include="Firmware\FileC39.cs" />
+    <Compile Include="Firmware\FileE39.cs" />
+    <Compile Include="Firmware\FileE78.cs" />
     <Compile Include="Firmware\FileME96.cs" />
     <Compile Include="Firmware\FileT5.cs" />
     <Compile Include="Firmware\FileT7.cs" />
@@ -122,7 +126,6 @@
     <Compile Include="FlashReadArguments.cs" />
     <Compile Include="BitTools.cs" />
     <Compile Include="BlockManager.cs" />
-    <Compile Include="Bootloader.cs" />
     <Compile Include="ByteCoder.cs" />
     <Compile Include="CAN\CANELM327Device.cs" />
     <Compile Include="CAN\CANListener.cs" />
@@ -132,13 +135,14 @@
     <Compile Include="CAN\ICANListener.cs" />
     <Compile Include="CAN\Just4TrionicDevice.cs" />
     <Compile Include="CAN\LPCCANDevice.cs" />
+    <Compile Include="protocol\gmlan.cs" />
+    <Compile Include="protocol\gmshared.cs" />
     <Compile Include="SeedKey\Algorithm.cs" />
     <Compile Include="SeedKey\AlgorithmDictionary.cs" />
     <Compile Include="SeedKey\SeedKeyGM.cs" />
     <Compile Include="SeedKey\Step.cs" />
+    <Compile Include="SettingsManager.cs" />
     <Compile Include="TargetParameters.cs" />
-    <Compile Include="Trionic5.cs" />
-    <Compile Include="Trionic7.cs" />
     <Compile Include="flasher\IFlasher.cs" />
     <Compile Include="flasher\T7CombiFlasher.cs" />
     <Compile Include="flasher\T7Flasher.cs" />
@@ -148,7 +152,6 @@
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
     <Compile Include="SeedToKey.cs" />
-    <Compile Include="Trionic8.cs" />
     <Compile Include="KWP\ELM327Device.cs" />
     <Compile Include="KWP\IKWPDevice.cs" />
     <Compile Include="KWP\KWPCANDevice.cs" />
@@ -162,7 +165,6 @@
     </Compile>
     <Compile Include="WMI\COMPortInfo.cs" />
     <Compile Include="WMI\ProcessConnection.cs" />
-    <Compile Include="z22se_preloader.cs" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Properties\Resources.resx">

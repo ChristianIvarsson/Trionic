@@ -241,7 +241,6 @@
             this.bntDiscard.TabIndex = 85;
             this.bntDiscard.Text = "Cancel";
             this.bntDiscard.UseVisualStyleBackColor = true;
-            this.bntDiscard.Click += new System.EventHandler(this.bntDiscard_Click);
             // 
             // cbUseLastPointer
             // 
