@@ -390,8 +390,6 @@ namespace TrionicCANFlasher
 
             EnableUserInput(true);
             AddLogItem("Connection terminated");
-
-            TargetBusy = false;
         }
 
         public void UpdateLogManager()
@@ -465,6 +463,8 @@ namespace TrionicCANFlasher
 
         private void EnableUserInput(bool enable)
         {
+            TargetBusy = !enable;
+
             btnFlashECU.Enabled = enable;
             btnReadECU.Enabled = enable;
             btnGetECUInfo.Enabled = enable;
@@ -601,8 +601,6 @@ namespace TrionicCANFlasher
                         EnableUserInput(false);
                         AddLogItem("Opening connection");
 
-                        TargetBusy = true;
-
                         if (target.openDevice(false))
                         {
                             Thread.Sleep(1000);
@@ -617,7 +615,6 @@ namespace TrionicCANFlasher
                         }
                         else
                         {
-                            TargetBusy = false;
                             AddLogItem("Unable to connect to target");
                             target.Cleanup();
                             EnableUserInput(true);
@@ -651,8 +648,6 @@ namespace TrionicCANFlasher
                             EnableUserInput(false);
                             AddLogItem("Opening connection");
 
-                            TargetBusy = true;
-
                             if (target.openDevice(false))
                             {
                                 Thread.Sleep(1000);
@@ -667,7 +662,6 @@ namespace TrionicCANFlasher
                             }
                             else
                             {
-                                TargetBusy = false;
                                 AddLogItem("Unable to connect to target");
                                 target.Cleanup();
                                 EnableUserInput(true);
@@ -696,8 +690,6 @@ namespace TrionicCANFlasher
                 SetGenericOptions(target);
                 EnableUserInput(false);
 
-                TargetBusy = true;
-
                 AddLogItem("Opening connection");
 
                 if (target.openDevice(false))
@@ -713,7 +705,6 @@ namespace TrionicCANFlasher
                 }
                 else
                 {
-                    TargetBusy = false;
                     AddLogItem("Unable to connect to target");
                     target.Cleanup();
                     EnableUserInput(true);
@@ -740,8 +731,6 @@ namespace TrionicCANFlasher
                         EnableUserInput(false);
                         AddLogItem("Opening connection");
 
-                        TargetBusy = true;
-
                         if (target.openDevice(false))
                         {
                             Thread.Sleep(1000);
@@ -756,7 +745,6 @@ namespace TrionicCANFlasher
                         }
                         else
                         {
-                            TargetBusy = false;
                             AddLogItem("Unable to connect to target");
                             target.Cleanup();
                             EnableUserInput(true);
@@ -786,8 +774,6 @@ namespace TrionicCANFlasher
                 EnableUserInput(false);
                 AddLogItem("Opening connection");
 
-                TargetBusy = true;
-
                 if (target.openDevice(false))
                 {
                     Thread.Sleep(1000);
@@ -801,7 +787,6 @@ namespace TrionicCANFlasher
                 }
                 else
                 {
-                    TargetBusy = false;
                     AddLogItem("Unable to connect to target");
                     target.Cleanup();
                     EnableUserInput(true);
@@ -834,8 +819,6 @@ namespace TrionicCANFlasher
                         EnableUserInput(false);
                         AddLogItem("Opening connection");
 
-                        TargetBusy = true;
-
                         if (target.openDevice(false))
                         {
                             Thread.Sleep(1000);
@@ -850,7 +833,6 @@ namespace TrionicCANFlasher
                         }
                         else
                         {
-                            TargetBusy = false;
                             AddLogItem("Unable to connect to target");
                             target.Cleanup();
                             EnableUserInput(true);

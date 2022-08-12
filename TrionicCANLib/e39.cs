@@ -1779,15 +1779,8 @@ namespace TrionicCANLib.API
 
         public void PrintSettings()
         {
-            if (_testBool)
-            {
-                CastInfoEvent("testbool is true", ActivityType.ConvertingFile);
-            }
-            else
-            {
-                CastInfoEvent("testbool is false", ActivityType.ConvertingFile);
-            }
-
+            CastInfoEvent("testbool: " + _testBool.ToString(), ActivityType.ConvertingFile);
+            CastInfoEvent("testbool2: " + _testBool2.ToString(), ActivityType.ConvertingFile);
             CastInfoEvent("Testint is " + _TestInt.ToString("D"), ActivityType.ConvertingFile);
             CastInfoEvent("Testint2 is " + _TestInt2.ToString("D"), ActivityType.ConvertingFile);
             CastInfoEvent("Testint3 is " + _TestInt3.ToString("D"), ActivityType.ConvertingFile);
