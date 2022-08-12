@@ -157,6 +157,15 @@ namespace TrionicCANLib.API
             }
         }
 
+        public void PrintSettings()
+        {
+            CastInfoEvent("testbool: " + _testBool.ToString(), ActivityType.ConvertingFile);
+            CastInfoEvent("testbool2: " + _testBool2.ToString(), ActivityType.ConvertingFile);
+            CastInfoEvent("Testint is " + _TestInt.ToString("D"), ActivityType.ConvertingFile);
+            CastInfoEvent("Testint2 is " + _TestInt2.ToString("D"), ActivityType.ConvertingFile);
+            CastInfoEvent("Testint3 is " + _TestInt3.ToString("D"), ActivityType.ConvertingFile);
+        }
+
         // Individual features of targets
         private class e39features : TargetFeatures
         {
@@ -201,7 +210,7 @@ namespace TrionicCANLib.API
             // m_ShouldUpdateChecksum = updateChecksum;
             gmlan = new GMLAN(this);
 
-            // These settings should ideally be set loaded on a per-target basis
+            // These settings should ideally be set on a per-target basis
             gmlan.TargetDeterminedDelays = true;
             gmlan.TesterId = 0x7E0;
             gmlan.TargetId = 0x7E8;
@@ -1776,15 +1785,6 @@ namespace TrionicCANLib.API
         {
             new ReadIdInfo { Id = 0x90, Type = InfoType.InfoTypeString  , Readable = "VIN                     " },
         };
-
-        public void PrintSettings()
-        {
-            CastInfoEvent("testbool: " + _testBool.ToString(), ActivityType.ConvertingFile);
-            CastInfoEvent("testbool2: " + _testBool2.ToString(), ActivityType.ConvertingFile);
-            CastInfoEvent("Testint is " + _TestInt.ToString("D"), ActivityType.ConvertingFile);
-            CastInfoEvent("Testint2 is " + _TestInt2.ToString("D"), ActivityType.ConvertingFile);
-            CastInfoEvent("Testint3 is " + _TestInt3.ToString("D"), ActivityType.ConvertingFile);
-        }
 
         public override void GetFirmwareInfo(object sender, DoWorkEventArgs workEvent)
         {
