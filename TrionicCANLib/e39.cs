@@ -164,6 +164,7 @@ namespace TrionicCANLib.API
             // public override bool FlashCalib { get { return true; } } // <- Needs more work in main
             public override bool ReadFull { get { return true; } }
             public override bool ReadCalib { get { return true; } }
+            public override bool ReadSram { get { return true; } }
             public override bool FirmwareInfo { get { return true; } }
             public override bool TroubleCodes { get { return true; } }
         }
@@ -315,7 +316,7 @@ namespace TrionicCANLib.API
                 CANMessage response = new CANMessage();
                 response = canListener.waitMessage(50);
             }
-            
+
             return true;
         }
 
@@ -397,7 +398,7 @@ namespace TrionicCANLib.API
 
             Bootloader_mpc5566 m_bootloader = new TrionicCANLib.Bootloader_mpc5566();
             uint bytesLeft = (uint)m_bootloader.Bootloader_mpc5566Bytes.Length;
-            uint totalBytes = (bytesLeft+7) & ~7U;
+            uint totalBytes = (bytesLeft + 7) & ~7U;
 
             // Copy bootloader to local buffer for modification and padding
             byte[] bootloaderBytes = new byte[totalBytes];
@@ -537,7 +538,7 @@ namespace TrionicCANLib.API
             status = true;
             return buf;
         }
-        
+
         private void LoaderRequestExit()
         {
             byte i = 10;
@@ -549,7 +550,7 @@ namespace TrionicCANLib.API
                     return;
                 }
                 Thread.Sleep(100);
-            } 
+            }
 
             CastInfoEvent("Bootloader did not respond to exit-request", ActivityType.ConvertingFile);
             CastInfoEvent("You may have to power-cycle the ECU", ActivityType.ConvertingFile);
@@ -753,14 +754,14 @@ namespace TrionicCANLib.API
 
                 if (TargetPercent > 0)
                 {
-                    int percentage = (int)((((float)(totLen-lzLen) * (TargetPercent-StartPercent)) / (float)totLen) + StartPercent);
+                    int percentage = (int)((((float)(totLen - lzLen) * (TargetPercent - StartPercent)) / (float)totLen) + StartPercent);
                     if (percentage != saved_progress)
                     {
                         CastProgressWriteEvent(percentage);
                         saved_progress = percentage;
                     }
                 }
- 
+
                 toCopy = (lzLen > 251) ? 251 : lzLen; // fb
                 ExtraDataLen = 4;
                 gmlan.DataToSend[1] = (byte)lzStep;
@@ -1686,15 +1687,15 @@ namespace TrionicCANLib.API
 
             switch (arguments.ecu)
             {
-            case ECU.DELCOE39:
-                WriteFlashE39(workEvent, arguments.FileName);
-                break;
-            case ECU.DELCOE78:
-                WriteFlashE78(workEvent, arguments.FileName);
-                break;
-            default:
-                CastInfoEvent("Unknown target for write", ActivityType.ConvertingFile);
-                break;
+                case ECU.DELCOE39:
+                    WriteFlashE39(workEvent, arguments.FileName);
+                    break;
+                case ECU.DELCOE78:
+                    WriteFlashE78(workEvent, arguments.FileName);
+                    break;
+                default:
+                    CastInfoEvent("Unknown target for write", ActivityType.ConvertingFile);
+                    break;
             }
         }
 
@@ -1730,81 +1731,6 @@ namespace TrionicCANLib.API
             {
                 CastInfoEvent("Could not read trouble codes", ActivityType.QueryingTroubleCodes);
             }
-        }
-
-        private void readSRAMe39(DoWorkEventArgs workEvent, mpc5566Mode mode)
-        {
-            /*
-            string filename = (string)workEvent.Argument;
-            byte[] buf = new byte[128 * 1024];
-            uint lowAddr= 0x40000000;
-            uint middleAddr = 0x40000000 + 0x3000;
-            uint bufPntr = 0;
-            bool status;
-
-            workEvent.Result = false;
-
-            for (uint i = 0; i < buf.Length; i++)
-            {
-                buf[i] = 0xFF;
-            }
-
-            CastInfoEvent("Downloading sram..", ActivityType.DownloadingFlash);
-
-            CastInfoEvent("Reading secret area..", ActivityType.ConvertingFile);
-            byte[] secret = ReadSRAM_32_24(0x40000000, 0x1000, 16);
-            */
-            /*
-                       CastInfoEvent("Reading main area..", ActivityType.ConvertingFile);
-                       byte[] middleblock = readMemoryByAddress32block(0x40000000 + 0x3000, (0x40020000 - 0x40000000) - 0x3000, 16);
-
-                       if (!UploadMPC5566Loader(e39e78LoaderBase, mpc5566Mode.modeE39))
-                           return;
-
-                       string ident = ident = newReadDataById(0x90);
-                       if (ident != "MPC5566-LOADER: TXSUITE.ORG")
-                       {
-                           CastInfoEvent("Loader did not start as expected (" + ident + ")", ActivityType.ConvertingFile);
-                           return;
-                       }
-
-                       uint delay = LegionOptions.InterframeDelay;
-                       newWriteDataById(0x91, new byte[] { (byte)(delay >> 8), (byte)delay });
-
-                       CastInfoEvent("Reading low area..", ActivityType.ConvertingFile);
-                       byte[] lowBlock  = dumpEx(out status, 0x40000000 + 0x1000, 0x40000000 + 0x3000);
-                       if (!status) return;
-                       */
-                       /*
-            for (uint i = 0; i < secret.Length; i++)
-            {
-                buf[bufPntr++] = secret[i];
-            }
-            */
-            /*
-            for (uint i = 0; i < lowBlock.Length; i++)
-            {
-                buf[bufPntr++] = lowBlock[i];
-            }
-            for (uint i = 0; i < middleblock.Length; i++)
-            {
-                buf[bufPntr++] = middleblock[i];
-            }*/
-            /*
-            try
-            {
-                File.WriteAllBytes(filename, buf);
-                Md5Tools.WriteMd5HashFromByteBuffer(filename, buf);
-                CastInfoEvent("Download done", ActivityType.FinishedDownloadingFlash);
-                workEvent.Result = true;
-            }
-            catch (Exception e)
-            {
-                CastInfoEvent("Could not write file... " + e.Message, ActivityType.ConvertingFile);
-                CastInfoEvent("Download failed", ActivityType.FinishedDownloadingFlash);
-
-            }
-            */
         }
 
         private readonly List<ReadIdInfo> E39InfoList = new List<ReadIdInfo>
@@ -1887,6 +1813,46 @@ namespace TrionicCANLib.API
                     workEvent.Result = true;
                     CastInfoEvent("Unknown target for information", ActivityType.ConvertingFile);
                     break;
+            }
+        }
+
+        public override void ReadSram(object sender, DoWorkEventArgs workEvent)
+        {
+            WorkerArgument arguments = (WorkerArgument)workEvent.Argument;
+            workEvent.Result = false;
+
+            switch (arguments.ecu)
+            {
+                case ECU.DELCOE39:
+                    ReadSram_mpc(workEvent, arguments.FileName, mpc5566Mode.modeE39);
+                    break;
+            }
+        }
+
+        private void ReadSram_mpc(DoWorkEventArgs workEvent, string filename, mpc5566Mode mode)
+        {
+            CastInfoEvent("Downloading sram..", ActivityType.DownloadingFlash);
+
+            byte[] secret = ReadSRAM_32_24(0x40000000, (64 * 1024), 16);
+
+            if (secret == null)
+            {
+                CastInfoEvent("Download failed", ActivityType.FinishedDownloadingFlash);
+                return;
+            }
+
+            try
+            {
+                File.WriteAllBytes(filename, secret);
+                Md5Tools.WriteMd5HashFromByteBuffer(filename, secret);
+                CastInfoEvent("Download done", ActivityType.FinishedDownloadingFlash);
+                workEvent.Result = true;
+            }
+            catch (Exception e)
+            {
+                CastInfoEvent("Could not write file... " + e.Message, ActivityType.ConvertingFile);
+                CastInfoEvent("Download failed", ActivityType.FinishedDownloadingFlash);
+                workEvent.Result = false;
             }
         }
     }

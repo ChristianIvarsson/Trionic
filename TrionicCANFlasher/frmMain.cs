@@ -726,6 +726,46 @@ namespace TrionicCANFlasher
 
         private void btnReadSRAM_Click(object sender, EventArgs e)
         {
+            ITrionic target = GetSelectedTarget();
+
+            if (target != null)
+            {
+                using (SaveFileDialog sfd = new SaveFileDialog() { Filter = "Bin files|*.bin" })
+                {
+                    if (sfd.ShowDialog() == DialogResult.OK &&
+                        sfd.FileName != string.Empty &&
+                        Path.GetFileName(sfd.FileName) != string.Empty)
+                    {
+                        SetGenericOptions(target);
+                        EnableUserInput(false);
+                        AddLogItem("Opening connection");
+
+                        TargetBusy = true;
+
+                        if (target.openDevice(false))
+                        {
+                            Thread.Sleep(1000);
+                            dtstart = DateTime.Now;
+                            AddLogItem("Acquiring FLASH content");
+                            Application.DoEvents();
+                            BackgroundWorker bgWorker;
+                            bgWorker = new BackgroundWorker();
+                            bgWorker.DoWork += new DoWorkEventHandler(target.ReadSram);
+                            bgWorker.RunWorkerCompleted += new RunWorkerCompletedEventHandler(bgWorker_RunWorkerCompleted);
+                            bgWorker.RunWorkerAsync(new WorkerArgument { FileName = sfd.FileName, ecu = EcuTargets[cbxEcuType.SelectedIndex].ecu });
+                        }
+                        else
+                        {
+                            TargetBusy = false;
+                            AddLogItem("Unable to connect to target");
+                            target.Cleanup();
+                            EnableUserInput(true);
+                            AddLogItem("Connection terminated");
+                        }
+                    }
+                }
+            }
+
             LogManager.Flush();
         }
 
