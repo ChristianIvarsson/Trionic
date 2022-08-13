@@ -16,24 +16,35 @@ using TrionicCANLib.SeedKey;
 
 namespace TrionicCANLib.API
 {
+    // For retrieval of error codes 
     public struct FailureRecord
     {
+        // Record number
         public uint Number;
+        // Error code
         public uint Code;
+        // What caused it to fail. Manufacturer specific
         public uint Type;
     }
 
+    // Used by "ReadDIDList" to retrieve a chunk of specified DIDs
     public enum InfoType : int
     {
+        // Display as ascii chars by default (will revert to hex array if it contains forbidden chars)
         InfoTypeString,
+        // Display as hex array
         InfoTypeArray,
+        // Display as a single or array of u32 values in decimal form
         InfoTypeU32
     }
 
-    public class ReadIdInfo
+    public class ReadDIDInfo
     {
-        public byte Id;
+        // DID to retrieve
+        public byte DID;
+        // How to display
         public InfoType Type;
+        // Description of data (VIN, Programming date etc)
         public string Readable;
     }
 
@@ -73,12 +84,12 @@ namespace TrionicCANLib.API
             get { return m_TargetId; }
         }
 
-        public GMSHARED(ITrionic parent)
+        public GMSHARED(ref ITrionic parent)
         {
             m_parent = parent;
         }
         
-        // Req: 1a id
+        // Req 1a id
         // aka kwp2k readDataByLocalIdentifier
         public string ReadByIdentifier(byte id, out bool result)
         {
@@ -118,7 +129,7 @@ namespace TrionicCANLib.API
             return retstring;
         }
 
-        // Req: 1a id
+        // Req 1a id
         // aka kwp2k readDataByLocalIdentifier
         public byte[] ReadByIdentifier(byte id)
         {
@@ -147,7 +158,7 @@ namespace TrionicCANLib.API
             return null;
         }
         
-        // Req: 27
+        // Req 27
         // Sorry about this one. Some targets have more than one key mechanism for the same level depending on its operational state
         public bool SecurityAccess(ECU ecu, byte level = 1, int mode = 0)
         {
@@ -255,16 +266,18 @@ namespace TrionicCANLib.API
             return true;
         }
 
-        // Req: 3b id ..
+        // Req 3b id ..
         // aka kwp2k writeDataByLocalIdentifier
         public bool WriteDataByIdentifier(byte[] dat, byte id, int len = -1)
         {
             int retLen;
+
             DataToSend[0] = 0x3b;
             DataToSend[1] = id;
 
             if (len > 0)
             {
+                // Explicitly specified length of 1 or more
                 if (len > (4095 - 2) || dat == null || dat.Length < len)
                 {
                     return false;
@@ -279,8 +292,9 @@ namespace TrionicCANLib.API
             }
             else
             {
-                if (dat != null)
+                if (dat != null && len != 0)
                 {
+                    // Retrieve length from data array if not explicit length of 0
                     if (dat.Length > (4095 - 2))
                     {
                         return false;
@@ -295,6 +309,7 @@ namespace TrionicCANLib.API
                 }
                 else
                 {
+                    // Write to a ID with no data. (why??)
                     retLen = TransferFrame(2);
                 }
             }
@@ -303,22 +318,21 @@ namespace TrionicCANLib.API
         }
 
         /// <summary>
-        /// Simplified method for retrieval of target IDs
+        /// Simplified method for retrieval of target DIDs
         /// </summary>
         /// <param name="idlist"></param>
-        public void ReadIdList(List<ReadIdInfo> idlist)
+        public void ReadDIDList(ReadDIDInfo[] idlist)
         {
-            if (idlist == null || idlist.Count == 0)
+            if (idlist == null || idlist.Length == 0)
             {
                 return;
             }
 
-            foreach (ReadIdInfo id in idlist)
+            foreach (ReadDIDInfo id in idlist)
             {
                 string Row = id.Readable + ": ";
-                byte[] tmp = ReadByIdentifier(id.Id);
+                byte[] tmp = ReadByIdentifier(id.DID);
                 bool ConversionError = false;
-                uint tempVal;
 
                 if (tmp == null)
                 {
@@ -343,21 +357,36 @@ namespace TrionicCANLib.API
                             }
                             break;
                         case InfoType.InfoTypeU32:
-                            if (tmp.Length != 4)
+                            if ((tmp.Length & 3) != 0 || tmp.Length > 16)
                             {
+                                // Too large or not in multiples of 4.
                                 ConversionError = true;
                             }
                             else
                             {
-                                tempVal = (uint)(tmp[0] << 24 | tmp[1] << 16 | tmp[2] << 8 | tmp[3]);
+                                int Len = tmp.Length;
+                                int bufPtr = 0;
 
-                                // Odometer (this id is standardized)
-                                if (id.Id == 0xdf)
+                                while (Len > 3)
                                 {
-                                    tempVal /= 64;
-                                }
+                                    uint tempVal = (uint)(tmp[bufPtr] << 24 | tmp[bufPtr + 1] << 16 | tmp[bufPtr + 2] << 8 | tmp[bufPtr + 3]);
 
-                                InfoString += tempVal.ToString("D");
+                                    // Odometer (this id is standardized)
+                                    if (id.DID == 0xdf && tmp.Length == 4)
+                                    {
+                                        tempVal /= 64;
+                                    }
+
+                                    InfoString += tempVal.ToString("D");
+
+                                    if (Len > 7)
+                                    {
+                                        InfoString += ", ";
+                                    }
+
+                                    bufPtr += 4;
+                                    Len -= 4;
+                                }
                             }
                             break;
                     }

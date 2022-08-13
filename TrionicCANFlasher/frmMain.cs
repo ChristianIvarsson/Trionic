@@ -39,7 +39,6 @@ namespace TrionicCANFlasher
         private ECUDesc[] EcuTargets = null;
         private bool TargetBusy = false;
 
-
         DateTime dtstart;
         public DelegateUpdateStatus m_DelegateUpdateStatus;
         public DelegateProgressStatus m_DelegateProgressStatus;

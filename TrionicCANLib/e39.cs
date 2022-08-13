@@ -68,6 +68,54 @@ namespace TrionicCANLib.API
         private const int timeoutP2ce = 5000;
         private const uint e39e78LoaderBase = 0x40004000;
 
+        private readonly ReadDIDInfo[] E39InfoList =
+        {
+            new ReadDIDInfo { DID = 0x90, Type = InfoType.InfoTypeString  , Readable = "VIN                     " },
+            // new ReadIdInfo { Id = 0x92, Type = InfoType.InfoTypeString  , Readable = "Supplier                " },
+            // new ReadIdInfo { Id = 0x97, Type = InfoType.InfoTypeString  , Readable = "Name                    " },
+            new ReadDIDInfo { DID = 0x99, Type = InfoType.InfoTypeArray   , Readable = "Programming date        " },
+
+            new ReadDIDInfo { DID = 0xc0, Type = InfoType.InfoTypeU32     , Readable = "Boot software P/N       " },
+            new ReadDIDInfo { DID = 0xd0, Type = InfoType.InfoTypeString  , Readable = "Boot software Alphacode " },
+            new ReadDIDInfo { DID = 0xc1, Type = InfoType.InfoTypeU32     , Readable = "Main software P/N       " },
+            new ReadDIDInfo { DID = 0xd1, Type = InfoType.InfoTypeString  , Readable = "Main software Alphacode " },
+            new ReadDIDInfo { DID = 0xc2, Type = InfoType.InfoTypeU32     , Readable = "System calibration P/N  " },
+            new ReadDIDInfo { DID = 0xd2, Type = InfoType.InfoTypeString  , Readable = "System calib. Alphacode " },
+            new ReadDIDInfo { DID = 0xc3, Type = InfoType.InfoTypeU32     , Readable = "Fuel calibration P/N    " },
+            new ReadDIDInfo { DID = 0xd3, Type = InfoType.InfoTypeString  , Readable = "Fuel calib. Alphacode   " },
+            new ReadDIDInfo { DID = 0xc4, Type = InfoType.InfoTypeU32     , Readable = "Speedo calibration P/N  " },
+            new ReadDIDInfo { DID = 0xd4, Type = InfoType.InfoTypeString  , Readable = "Speedo calib. Alphacode " },
+            new ReadDIDInfo { DID = 0xc5, Type = InfoType.InfoTypeU32     , Readable = "Diag calibration P/N    " },
+            new ReadDIDInfo { DID = 0xd5, Type = InfoType.InfoTypeString  , Readable = "Diag calib. Alphacode   " },
+            new ReadDIDInfo { DID = 0xc6, Type = InfoType.InfoTypeU32     , Readable = "Engine calibration P/N  " },
+            new ReadDIDInfo { DID = 0xd6, Type = InfoType.InfoTypeString  , Readable = "Engine calib. Alphacode " },
+            new ReadDIDInfo { DID = 0xc9, Type = InfoType.InfoTypeU32     , Readable = "Module 9 P/N            " }, // What are these??
+            new ReadDIDInfo { DID = 0xd9, Type = InfoType.InfoTypeString  , Readable = "Module 9 Alphacode      " },
+            new ReadDIDInfo { DID = 0xca, Type = InfoType.InfoTypeU32     , Readable = "Module A P/N            " },
+            new ReadDIDInfo { DID = 0xda, Type = InfoType.InfoTypeString  , Readable = "Module A Alphacode      " },
+            new ReadDIDInfo { DID = 0xcb, Type = InfoType.InfoTypeU32     , Readable = "End model P/N           " },
+            new ReadDIDInfo { DID = 0xdb, Type = InfoType.InfoTypeString  , Readable = "End model P/N Alphacode " },
+            new ReadDIDInfo { DID = 0xcc, Type = InfoType.InfoTypeU32     , Readable = "Base model P/N          " },
+            new ReadDIDInfo { DID = 0xdc, Type = InfoType.InfoTypeString  , Readable = "Base model P/N Alphacode" },
+
+            new ReadDIDInfo { DID = 0xdf, Type = InfoType.InfoTypeU32     , Readable = "Distance traveled. Km   " },
+            new ReadDIDInfo { DID = 0x9a, Type = InfoType.InfoTypeArray   , Readable = "Diagnostic Ident.       " },
+            new ReadDIDInfo { DID = 0xa0, Type = InfoType.InfoTypeArray   , Readable = "Manufacturer Enable Cntr" },
+            new ReadDIDInfo { DID = 0xb0, Type = InfoType.InfoTypeArray   , Readable = "Diagnostic address      " },
+            new ReadDIDInfo { DID = 0x98, Type = InfoType.InfoTypeString  , Readable = "Tester S/N / Repair code" },
+            new ReadDIDInfo { DID = 0x9f, Type = InfoType.InfoTypeString  , Readable = "Previous Tester / Repair" },
+            new ReadDIDInfo { DID = 0xb4, Type = InfoType.InfoTypeString  , Readable = "Manufacturer trace str. " },
+        };
+
+        private readonly ReadDIDInfo[] E78InfoList =
+        {
+            new ReadDIDInfo { DID = 0x90, Type = InfoType.InfoTypeString  , Readable = "VIN                     " },
+        };
+
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        /// /Testing
+
         private bool _testBool = false;
         public bool TestBool
         {
@@ -166,6 +214,10 @@ namespace TrionicCANLib.API
             CastInfoEvent("Testint3 is " + _TestInt3.ToString("D"), ActivityType.ConvertingFile);
         }
 
+        /// Testing/
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
         // Individual features of targets
         private class e39features : TargetFeatures
         {
@@ -208,10 +260,7 @@ namespace TrionicCANLib.API
                 gmlan = new GMLAN(this);
             }
 
-            // These settings should ideally be set on a per-target basis
-            gmlan.TargetDeterminedDelays = true;
-            gmlan.TesterId = 0x7E0;
-            gmlan.TargetId = 0x7E8;
+            gmlan.SafeDefaults(0x7E0, 0x7E8);
         }
 
         public DelcoE39()
@@ -221,7 +270,6 @@ namespace TrionicCANLib.API
 
             tmr.Elapsed += tmr_Elapsed;
             // m_ShouldUpdateChecksum = updateChecksum;
-            gmlan = new GMLAN(this);
 
             DefaultGmlan();
         }
@@ -311,6 +359,9 @@ namespace TrionicCANLib.API
         {
             CastInfoEvent("Open called in ACDelco", ActivityType.ConvertingFile);
             MM_BeginPeriod(1);
+
+            DefaultGmlan();
+
             OpenResult openResult = OpenResult.OpenError;
             try
             {
@@ -1759,50 +1810,6 @@ namespace TrionicCANLib.API
             }
         }
 
-        private readonly List<ReadIdInfo> E39InfoList = new List<ReadIdInfo>
-        {
-            new ReadIdInfo { Id = 0x90, Type = InfoType.InfoTypeString  , Readable = "VIN                     " },
-            // new ReadIdInfo { Id = 0x92, Type = InfoType.InfoTypeString  , Readable = "Supplier                " },
-            // new ReadIdInfo { Id = 0x97, Type = InfoType.InfoTypeString  , Readable = "Name                    " },
-            new ReadIdInfo { Id = 0x99, Type = InfoType.InfoTypeArray   , Readable = "Programming date        " },
-
-            new ReadIdInfo { Id = 0xc0, Type = InfoType.InfoTypeU32     , Readable = "Boot software P/N       " },
-            new ReadIdInfo { Id = 0xd0, Type = InfoType.InfoTypeString  , Readable = "Boot software Alphacode " },
-            new ReadIdInfo { Id = 0xc1, Type = InfoType.InfoTypeU32     , Readable = "Main software P/N       " },
-            new ReadIdInfo { Id = 0xd1, Type = InfoType.InfoTypeString  , Readable = "Main software Alphacode " },
-            new ReadIdInfo { Id = 0xc2, Type = InfoType.InfoTypeU32     , Readable = "System calibration P/N  " },
-            new ReadIdInfo { Id = 0xd2, Type = InfoType.InfoTypeString  , Readable = "System calib. Alphacode " },
-            new ReadIdInfo { Id = 0xc3, Type = InfoType.InfoTypeU32     , Readable = "Fuel calibration P/N    " },
-            new ReadIdInfo { Id = 0xd3, Type = InfoType.InfoTypeString  , Readable = "Fuel calib. Alphacode   " },
-            new ReadIdInfo { Id = 0xc4, Type = InfoType.InfoTypeU32     , Readable = "Speedo calibration P/N  " },
-            new ReadIdInfo { Id = 0xd4, Type = InfoType.InfoTypeString  , Readable = "Speedo calib. Alphacode " },
-            new ReadIdInfo { Id = 0xc5, Type = InfoType.InfoTypeU32     , Readable = "Diag calibration P/N    " },
-            new ReadIdInfo { Id = 0xd5, Type = InfoType.InfoTypeString  , Readable = "Diag calib. Alphacode   " },
-            new ReadIdInfo { Id = 0xc6, Type = InfoType.InfoTypeU32     , Readable = "Engine calibration P/N  " },
-            new ReadIdInfo { Id = 0xd6, Type = InfoType.InfoTypeString  , Readable = "Engine calib. Alphacode " },
-            new ReadIdInfo { Id = 0xc9, Type = InfoType.InfoTypeU32     , Readable = "Module 9 P/N            " }, // What are these??
-            new ReadIdInfo { Id = 0xd9, Type = InfoType.InfoTypeString  , Readable = "Module 9 Alphacode      " },
-            new ReadIdInfo { Id = 0xca, Type = InfoType.InfoTypeU32     , Readable = "Module A P/N            " },
-            new ReadIdInfo { Id = 0xda, Type = InfoType.InfoTypeString  , Readable = "Module A Alphacode      " },
-            new ReadIdInfo { Id = 0xcb, Type = InfoType.InfoTypeU32     , Readable = "End model P/N           " },
-            new ReadIdInfo { Id = 0xdb, Type = InfoType.InfoTypeString  , Readable = "End model P/N Alphacode " },
-            new ReadIdInfo { Id = 0xcc, Type = InfoType.InfoTypeU32     , Readable = "Base model P/N          " },
-            new ReadIdInfo { Id = 0xdc, Type = InfoType.InfoTypeString  , Readable = "Base model P/N Alphacode" },
-
-            new ReadIdInfo { Id = 0xdf, Type = InfoType.InfoTypeU32     , Readable = "Distance traveled. Km   " },
-            new ReadIdInfo { Id = 0x9a, Type = InfoType.InfoTypeArray   , Readable = "Diagnostic Ident.       " },
-            new ReadIdInfo { Id = 0xa0, Type = InfoType.InfoTypeArray   , Readable = "Manufacturer Enable Cntr" },
-            new ReadIdInfo { Id = 0xb0, Type = InfoType.InfoTypeArray   , Readable = "Diagnostic address      " },
-            new ReadIdInfo { Id = 0x98, Type = InfoType.InfoTypeString  , Readable = "Tester S/N / Repair code" },
-            new ReadIdInfo { Id = 0x9f, Type = InfoType.InfoTypeString  , Readable = "Previous Tester / Repair" },
-            new ReadIdInfo { Id = 0xb4, Type = InfoType.InfoTypeString  , Readable = "Manufacturer trace str. " },
-        };
-
-        private readonly List<ReadIdInfo> E78InfoList = new List<ReadIdInfo>
-        {
-            new ReadIdInfo { Id = 0x90, Type = InfoType.InfoTypeString  , Readable = "VIN                     " },
-        };
-
         public override void GetFirmwareInfo(object sender, DoWorkEventArgs workEvent)
         {
             WorkerArgument arguments = (WorkerArgument)workEvent.Argument;
@@ -1814,12 +1821,12 @@ namespace TrionicCANLib.API
             {
                 case ECU.DELCOE39:
                     gmlan.ReportProgrammedState();
-                    gmlan.ReadIdList(E39InfoList);
+                    gmlan.ReadDIDList(E39InfoList);
                     // gmlan.TryAllIds()();
                     break;
                 case ECU.DELCOE78:
                     gmlan.ReportProgrammedState();
-                    gmlan.ReadIdList(E78InfoList);
+                    gmlan.ReadDIDList(E78InfoList);
                     break;
                 default:
                     workEvent.Result = true;
@@ -1886,5 +1893,37 @@ namespace TrionicCANLib.API
                 workEvent.Result = false;
             }
         }
+
+        // Example broadcast init diag level 2
+        // > 101 FE  02 10 02
+        // < 649     01 50
+        // < 644     01 50
+        // < 7E8     02 50 02 <- ECU
+        // < 643     01 50
+        // < 645     03 7F 10 <- CIM
+
+        // Broadcast read by id (id == diagnostic address)
+        // > 101 FE  02 1A B0
+        // < 644     03 5A B0 31
+        // < 643     03 5A B0 28
+        // < 649     03 5A B0 72
+        // < 7E8     03 5A B0 11 <- ECU
+        // < 645     03 5A B0 41 <- CIM
+
+        // Example broadcast programming operations
+        // > 101 FE  01 28
+        // < 644     01 68
+        // < 649     01 68
+        // < 7E8     01 68 <- ECU
+        // < 643     01 68
+        // < 645     01 68 <- CIM
+
+        // Example broadcast tester present
+        // > 101 FE  01 3E
+        // < None ???
+
+        // Functional System Addresses
+        // FD: Gateway device
+        // FE: All functional systems (AllNode)
     }
 }
