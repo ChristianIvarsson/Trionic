@@ -835,63 +835,6 @@ namespace TrionicCANFlasher
             SettingsLogic();
         }
 
-        private class BoolChanged
-        {
-            public BoolChanged(int itemindex, CustomSettings settings)
-            {
-                Index = itemindex;
-                Settings = settings;
-            }
-
-            public void EventHandler(object sender, EventArgs e)
-            {
-                CheckBox cbx = (CheckBox)sender;
-                Settings.Settings[Index].Value = (bool)cbx.Checked;
-                Settings.PerformTargetLogic();
-            }
-
-            private int Index;
-            private CustomSettings Settings;
-        }
-
-        private class IndexChanged
-        {
-            public IndexChanged(int itemindex, CustomSettings settings)
-            {
-                Index = itemindex;
-                Settings = settings;
-            }
-
-            public void EventHandler(object sender, EventArgs e)
-            {
-                ComboBox combo = (ComboBox)sender;
-                Settings.Settings[Index].Value = (int)combo.SelectedIndex;
-                Settings.PerformTargetLogic();
-            }
-
-            private int Index;
-            private CustomSettings Settings;
-        }
-
-        private class IntChanged
-        {
-            public IntChanged(int itemindex, CustomSettings settings)
-            {
-                Index = itemindex;
-                Settings = settings;
-            }
-
-            public void EventHandler(object sender, EventArgs e)
-            {
-                NumericUpDown scroll = (NumericUpDown)sender;
-                Settings.Settings[Index].Value = (int)scroll.Value;
-                Settings.PerformTargetLogic();
-            }
-
-            private int Index;
-            private CustomSettings Settings;
-        }
-
         private class CustomSettings
         {
             public CustomSettings(ITrionic Instance, ECU ecu, System.Drawing.Size origsize)
@@ -927,19 +870,6 @@ namespace TrionicCANFlasher
                 AddedItems.Add(scroll);
             }
 
-            public void PerformTargetLogic()
-            {
-                if (IgnoreLogic == false)
-                {
-                    m_instance.TargetSettingsLogic(m_ecu, ref Manager);
-
-                    for (int i = 0; i < AddedItems.Count && i < Settings.Count; i++)
-                    {
-                        AddedItems[i].Enabled = Settings[i].Enabled;
-                    }
-                }
-            }
-
             public void AddLabel(Label lab)
             {
                 LabelItems.Add(lab);
@@ -958,6 +888,76 @@ namespace TrionicCANFlasher
                     ctrl.Remove(itm);
                 }
                 LabelItems.Clear();
+            }
+
+            public void PerformTargetLogic()
+            {
+                if (IgnoreLogic == false)
+                {
+                    m_instance.TargetSettingsLogic(m_ecu, ref Manager);
+
+                    for (int i = 0; i < AddedItems.Count && i < Settings.Count; i++)
+                    {
+                        AddedItems[i].Enabled = Settings[i].Enabled;
+                    }
+                }
+            }
+
+            private class BoolChanged
+            {
+                public BoolChanged(int itemindex, CustomSettings settings)
+                {
+                    Index = itemindex;
+                    Settings = settings;
+                }
+
+                public void EventHandler(object sender, EventArgs e)
+                {
+                    CheckBox cbx = (CheckBox)sender;
+                    Settings.Settings[Index].Value = (bool)cbx.Checked;
+                    Settings.PerformTargetLogic();
+                }
+
+                private int Index;
+                private CustomSettings Settings;
+            }
+
+            private class IndexChanged
+            {
+                public IndexChanged(int itemindex, CustomSettings settings)
+                {
+                    Index = itemindex;
+                    Settings = settings;
+                }
+
+                public void EventHandler(object sender, EventArgs e)
+                {
+                    ComboBox combo = (ComboBox)sender;
+                    Settings.Settings[Index].Value = (int)combo.SelectedIndex;
+                    Settings.PerformTargetLogic();
+                }
+
+                private int Index;
+                private CustomSettings Settings;
+            }
+
+            private class IntChanged
+            {
+                public IntChanged(int itemindex, CustomSettings settings)
+                {
+                    Index = itemindex;
+                    Settings = settings;
+                }
+
+                public void EventHandler(object sender, EventArgs e)
+                {
+                    NumericUpDown scroll = (NumericUpDown)sender;
+                    Settings.Settings[Index].Value = (int)scroll.Value;
+                    Settings.PerformTargetLogic();
+                }
+
+                private int Index;
+                private CustomSettings Settings;
             }
 
             private List<BoolChanged> BoolHandlers = new List<BoolChanged>();
@@ -1077,7 +1077,7 @@ namespace TrionicCANFlasher
                                 NumericUpDown Numero = new NumericUpDown();
                                 Numero.AutoSize = true;
                                 Numero.ForeColor = System.Drawing.Color.Black;
-                                Numero.Name = "upd_" + sets[i].DisplayName;
+                                Numero.Name = "upd_" + sets[i].DisplayName + i.ToString("D");
                                 Numero.Text = sets[i].DisplayName;
                                 Numero.Size = new System.Drawing.Size((XSize / 2) - 20, 17);
                                 Numero.Left = (even) ? 12 : (16 + (XSize / 2));
@@ -1098,7 +1098,7 @@ namespace TrionicCANFlasher
                                 // ddown.Location = new System.Drawing.Point(194, 65);
                                 // ddown.TabIndex = 81;
                                 ddown.Items.AddRange(listvals);
-                                ddown.Name = "drp_" + sets[i].DisplayName;
+                                ddown.Name = "drp_" + sets[i].DisplayName + i.ToString("D");
                                 ddown.Size = new System.Drawing.Size(150, 21);
                                 ddown.SelectedIndex = (int)value;
                                 ddown.Left = (even) ? 12 : (16 + (XSize / 2));
@@ -1115,7 +1115,7 @@ namespace TrionicCANFlasher
                             CheckBox cbox = new CheckBox();
                             cbox.AutoSize = true;
                             cbox.ForeColor = System.Drawing.Color.Black;
-                            cbox.Name = "cbx_" + sets[i].DisplayName;
+                            cbox.Name = "cbx_" + sets[i].DisplayName + i.ToString("D");
                             cbox.Text = sets[i].DisplayName;
                             cbox.Size = new System.Drawing.Size((XSize / 2) - 20, 17);
                             cbox.Checked = (bool)value;

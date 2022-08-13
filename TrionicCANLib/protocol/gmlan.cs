@@ -796,10 +796,14 @@ namespace TrionicCANLib.API
             return (TransferFrame(1) > 0 && ReadData[0] == 0x44);
         }
 
-        // Req: 10 mode
-        // Mode 02: disableAllDTCs
-        // Mode 03: enableDTCsDuringDevCntrl
-        // Mode 04: wakeUpLinks
+        /// <summary>
+        /// Req: 10 mode.
+        /// Mode 02: disableAllDTCs
+        /// Mode 03: enableDTCsDuringDevCntrl
+        /// Mode 04: wakeUpLinks
+        /// </summary>
+        /// <param name="mode"></param>
+        /// <returns></returns>
         public bool InitiateDiagnosticOperation(byte mode)
         {
             DataToSend[0] = 0x10;
@@ -1138,16 +1142,19 @@ namespace TrionicCANLib.API
             return true;
         }
 
-        // Req: a2
-        // 00: fully programmed
-        // 01: no op s/w or cal data
-        // 02: op s/w present, cal data missing
-        // 50: General Memory Fault
-        // 51: RAM Memory Fault
-        // 52: NVRAM Memory Fault
-        // 53: Boot Memory Failure
-        // 54: Flash Memory Failure
-        // 55: EEPROM Memory Failure
+        /// <summary>
+        /// Req a2. Prints information about the target's programmed state.
+        /// 00: fully programmed
+        /// 01: no op s/w or cal data
+        /// 02: op s/w present, cal data missing
+        /// 50: General Memory Fault
+        /// 51: RAM Memory Fault
+        /// 52: NVRAM Memory Fault
+        /// 53: Boot Memory Failure
+        /// 54: Flash Memory Failure
+        /// 55: EEPROM Memory Failure
+        /// </summary>
+        /// <returns></returns>
         public bool ReportProgrammedState()
         {
             DataToSend[0] = 0xa2;
@@ -1182,10 +1189,14 @@ namespace TrionicCANLib.API
             }
         }
 
-        // Req: a5 lev
-        // lev 1: requestProgrammingMode
-        // lev 2: requestProgrammingMode_HighSpeed
-        // lev 3: enableProgrammingMode
+        /// <summary>
+        /// Req: a5 lev.
+        /// lev 1: requestProgrammingMode
+        /// lev 2: requestProgrammingMode_HighSpeed
+        /// lev 3: enableProgrammingMode
+        /// </summary>
+        /// <param name="lev"></param>
+        /// <returns></returns>
         public bool ProgrammingMode(byte lev)
         {
             if (lev != 3)

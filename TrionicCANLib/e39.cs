@@ -108,11 +108,11 @@ namespace TrionicCANLib.API
         {
             private SettingProperty[] m_settings = new SettingProperty[]
             {
-                new SettingProperty ( nameof(TestInt)  , null, "", "" ),
-                new SettingProperty ( nameof(TestInt2) , new Object[] { "Index 0", "Index 1", "Index 2" }, "", "" ),
-                new SettingProperty ( nameof(TestInt3) , new Object[] { "Index 0", "Index 1", "Index 2" }, "", "" ),
-                new SettingProperty ( nameof(TestBool) , null, "", "" ),
-                new SettingProperty ( nameof(TestBool2), null, "", "" ),
+                new SettingProperty ( nameof(TestInt)  , null, "", "Farts" ),
+                new SettingProperty ( nameof(TestInt2) , new Object[] { "Index 0", "Index 1", "Index 2" }, "", "Some name" ),
+                new SettingProperty ( nameof(TestInt3) , new Object[] { "Index 0", "Index 1", "Index 2" }, "", "Another one" ),
+                new SettingProperty ( nameof(TestBool) , null, "", "Play around with Farts" ),
+                new SettingProperty ( nameof(TestBool2), null, "", "Click me" ),
             };
 
             public override ref SettingProperty[] Properties
@@ -201,6 +201,19 @@ namespace TrionicCANLib.API
             return ref BaseFeatures;
         }
 
+        private void DefaultGmlan()
+        {
+            if (gmlan == null)
+            {
+                gmlan = new GMLAN(this);
+            }
+
+            // These settings should ideally be set on a per-target basis
+            gmlan.TargetDeterminedDelays = true;
+            gmlan.TesterId = 0x7E0;
+            gmlan.TargetId = 0x7E8;
+        }
+
         public DelcoE39()
         {
             // Just to verify there's only ONE instance created
@@ -210,10 +223,7 @@ namespace TrionicCANLib.API
             // m_ShouldUpdateChecksum = updateChecksum;
             gmlan = new GMLAN(this);
 
-            // These settings should ideally be set on a per-target basis
-            gmlan.TargetDeterminedDelays = true;
-            gmlan.TesterId = 0x7E0;
-            gmlan.TargetId = 0x7E8;
+            DefaultGmlan();
         }
 
         public bool StallKeepAlive
@@ -1589,6 +1599,8 @@ namespace TrionicCANLib.API
             WorkerArgument arguments = (WorkerArgument)workEvent.Argument;
             workEvent.Result = false;
 
+            DefaultGmlan();
+
             switch (arguments.ecu)
             {
                 case ECU.DELCOE39:
@@ -1645,6 +1657,8 @@ namespace TrionicCANLib.API
             WorkerArgument arguments = (WorkerArgument)workEvent.Argument;
             workEvent.Result = false;
 
+            DefaultGmlan();
+
             switch (arguments.ecu)
             {
                 case ECU.DELCOE39:
@@ -1694,6 +1708,8 @@ namespace TrionicCANLib.API
             WorkerArgument arguments = (WorkerArgument)workEvent.Argument;
             workEvent.Result = false;
 
+            DefaultGmlan();
+
             switch (arguments.ecu)
             {
                 case ECU.DELCOE39:
@@ -1712,8 +1728,9 @@ namespace TrionicCANLib.API
         {
             WorkerArgument arguments = (WorkerArgument)workEvent.Argument;
             List<FailureRecord> records;
-
             workEvent.Result = false;
+
+            DefaultGmlan();
 
             SendKeepAlive();
 
@@ -1791,6 +1808,8 @@ namespace TrionicCANLib.API
             WorkerArgument arguments = (WorkerArgument)workEvent.Argument;
             workEvent.Result = true;
 
+            DefaultGmlan();
+
             switch (arguments.ecu)
             {
                 case ECU.DELCOE39:
@@ -1814,19 +1833,38 @@ namespace TrionicCANLib.API
             WorkerArgument arguments = (WorkerArgument)workEvent.Argument;
             workEvent.Result = false;
 
+            DefaultGmlan();
+
             switch (arguments.ecu)
             {
                 case ECU.DELCOE39:
-                    ReadSram_mpc(workEvent, arguments.FileName, mpc5566Mode.modeE39);
+                    ReadSram_e39(workEvent, arguments.FileName, mpc5566Mode.modeE39);
                     break;
             }
         }
 
-        private void ReadSram_mpc(DoWorkEventArgs workEvent, string filename, mpc5566Mode mode)
+        private void ReadSram_e39(DoWorkEventArgs workEvent, string filename, mpc5566Mode mode)
         {
             CastInfoEvent("Downloading sram..", ActivityType.DownloadingFlash);
 
-            byte[] secret = ReadSRAM_32_24(0x40000000, (64 * 1024), 16);
+            SendKeepAlive();
+
+            gmlan.InitiateDiagnosticOperation(4);
+
+            if (!gmlan.SecurityAccess(ECU.DELCOE39, 1))
+            {
+                return;
+            }
+
+            SendKeepAlive();
+            gmlan.DisableNormalCommunication();
+
+            gmlan.TargetDelay = 0;
+            gmlan.HostDelay = 0;
+            gmlan.TargetDeterminedDelays = false;
+
+            // It doesn't like dumping more than 16-20 bytes per transfer for some reason..
+            byte[] secret = ReadSRAM_32_24(0x40000000, (128 * 1024), 16);
 
             if (secret == null)
             {

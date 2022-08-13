@@ -66,10 +66,10 @@ namespace FlasherSettings
         }
 
         public bool Enabled;
+        public Object Value;
         public readonly int Index;
         public readonly string PropertyName;
         public readonly string DisplayName;
-        public Object Value;
         public readonly Object[] ListValues;
     }
 
@@ -324,13 +324,13 @@ namespace FlasherSettings
                     // Automatically fix up index if it's out of bounds
                     if (Settings[idx]._listval != null)
                     {
-                        if ((int)value < 0)
+                        if ((int)value < 0 || Settings[idx]._listval.Count() == 0)
                         {
                             value = 0;
                             Set(idx, (int)value);
                             m_logger.Debug("Fixed up list bounds");
                         }
-                        else if ((int)value >= Settings[idx]._listval.Count() && Settings[idx]._listval.Count() > 0)
+                        else if ((int)value >= Settings[idx]._listval.Count())
                         {
                             value = (int)Settings[idx]._listval.Count() - 1;
                             Set(idx, (int)value);
@@ -373,12 +373,12 @@ namespace FlasherSettings
                     // Automatically fix up index if it's out of bounds
                     if (Settings[idx]._listval != null)
                     {
-                        if ((int)value < 0)
+                        if ((int)value < 0 || Settings[idx]._listval.Count() == 0)
                         {
                             value = 0;
                             m_logger.Debug("Fixed up list bounds");
                         }
-                        else if ((int)value >= Settings[idx]._listval.Count() && Settings[idx]._listval.Count() > 0)
+                        else if ((int)value >= Settings[idx]._listval.Count())
                         {
                             value = (int)Settings[idx]._listval.Count() - 1;
                             m_logger.Debug("Fixed up list bounds");
@@ -450,12 +450,12 @@ namespace FlasherSettings
                     // Automatically fix up index if it's out of bounds
                     if (Settings[idx]._listval != null)
                     {
-                        if ((int)value < 0)
+                        if ((int)value < 0 || Settings[idx]._listval.Count() == 0)
                         {
                             value = 0;
                             m_logger.Debug("Fixed up list bounds");
                         }
-                        else if ((int)value >= Settings[idx]._listval.Count() && Settings[idx]._listval.Count() > 0)
+                        else if ((int)value >= Settings[idx]._listval.Count())
                         {
                             value = (int)Settings[idx]._listval.Count() - 1;
                             m_logger.Debug("Fixed up list bounds");
