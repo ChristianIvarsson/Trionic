@@ -35,7 +35,7 @@ Current TODO:
 
 Investigate:
 Had a weird instance where transfer usdt in e39 would error out with "unable to send" after this had been used
-
+ReadStatusOfDTCByStatusMask. Does it need a tester present?
 
 In queue:
 Add timeout while waiting for target readyness (FlowControl 31 instead of 30)
@@ -144,6 +144,25 @@ namespace TrionicCANLib.API
         public GMLAN(ITrionic parent) : base(ref parent)
         {
             SafeDefaults(0x7E0, 0x7E8);
+        }
+
+        public void SafeDefaults(uint TesterID = 0x7E0, uint TargetID = 0x7E8)
+        {
+            m_TesterId = TesterID;
+            m_TargetId = TargetID;
+
+            m_ExtendedAddressing = false;
+
+            m_HaveFullResponse = false;
+
+            // Always wait one ms between sent conseuctive frames
+            // Host -> target
+            m_HostDelay = 1000;
+            m_TargetDeterminedDelays = false;
+
+            // Requested target -> host delay for consecutive frames
+            // 1 ms in encoded form
+            m_TargetDelay = 1;
         }
 
         public string ReasonForFailuer(int REQ = -1)
@@ -304,7 +323,7 @@ namespace TrionicCANLib.API
         // Flow Control | 0  0  1  1     FS   |   BS    |  STmin  |   (3X, XX, XX)
         //
         // Weird formats:
-        // CIM's diagnostic address is 41 but it doesn't make sense to send it like this
+        // CIM's diagnostic address is 41 but it doesn't make sense to send it like this.. or does it?
         // Not to mention that, according to spec, one should set the high PCI nibble to 0, not 9 as here
         // Exd single   |  Extended address   | ????:dl |   N/A   |   101 [41   92 1a 79].  <- Sent to CIM. Read by id, id 79
         //
@@ -615,6 +634,231 @@ namespace TrionicCANLib.API
             return 0;
         }
 
+        private bool TransferFrameNoResponse(int BytesToSend, uint ExpectedTargetId)
+        {
+            CANMessage response, msg = new CANMessage(m_TesterId, 0, 8);
+            ulong data;
+
+            m_HaveFullResponse = false;
+
+            // Figure out how to use these!
+            // msg.elmExpectedResponses = 1;
+            // m_parent.canUsbDevice.RequestDeviceReady();
+            // msg.elmExpectedResponses = (bytesLeft == 0) ? 1 : 0;
+
+            if (BytesToSend < 1 || BytesToSend > 4095)
+            {
+                m_parent.CastInfoEvent("TransferFrameNoResponse: Check lengths!", ActivityType.TransferLayer);
+                return false;
+            }
+
+            // Fast-forward queue index
+            m_parent.canListener.ClearQueue();
+
+            /////////////////////
+            // Send
+
+            if (m_ExtendedAddressing == false)
+            {
+                if (BytesToSend < 8)
+                {
+                    /////////////////////
+                    // <0x REQ .. ..>
+                    msg.setLength((byte)(BytesToSend + 1));
+                    ulong cmd = (ulong)BytesToSend;
+
+                    for (int i = 0; i < BytesToSend; i++)
+                    {
+                        cmd |= (ulong)DataToSend[i] << ((i + 1) * 8);
+                    }
+
+                    if (ExpectedTargetId != 0)
+                    {
+                        m_parent.canListener.setupWaitMessage(m_TargetId, ExpectedTargetId);
+                    }
+                    else
+                    {
+                        m_parent.canListener.setupWaitMessage(m_TargetId);
+                    }
+
+                    msg.setData(cmd);
+                    if (!m_parent.canUsbDevice.sendMessage(msg))
+                    {
+                        m_parent.CastInfoEvent("TransferFrameNoResponse: Couldn't send message", ActivityType.TransferLayer);
+                        return false;
+                    }
+                }
+                else
+                {
+                    /////////////////////
+                    // <1x xx REQ .. ..>
+                    ulong cmd = (ulong)((BytesToSend & 0xff) << 8 | (BytesToSend >> 8) | 0x10);
+                    int bufPtr = 0;
+                    int stp = 0x21;
+
+                    BytesToSend -= 6;
+                    for (int i = 2; i < 8; i++)
+                    {
+                        cmd |= (ulong)DataToSend[bufPtr++] << (i * 8);
+                    }
+
+                    if (ExpectedTargetId != 0)
+                    {
+                        m_parent.canListener.setupWaitMessage(m_TargetId, ExpectedTargetId);
+                    }
+                    else
+                    {
+                        m_parent.canListener.setupWaitMessage(m_TargetId);
+                    }
+
+                    msg.setData(cmd);
+                    if (!m_parent.canUsbDevice.sendMessage(msg))
+                    {
+                        m_parent.CastInfoEvent("TransferFrameNoResponse: Couldn't send message", ActivityType.TransferLayer);
+                        return false;
+                    }
+
+                    /////////////////////
+                    // <3x xx xx>
+
+                    // Wait for target readyness
+                    // TODO: Implement timeout
+                    do
+                    {
+                        response = m_parent.canListener.waitMessage(timeoutP2ct);
+                        data = response.getData();
+                    } while ((data & 0xff) == 0x31);
+
+                    if ((data & 0xff) == 0x30) // All is green
+                    {
+                        uint BS = (uint)(data >> 8) & 0xff;
+                        uint ST = (uint)(data >> 16) & 0xff;
+
+                        if (BS > 0)
+                        {
+                            // TODO: Find a target that is even able to send this and implement it!
+                            m_parent.CastInfoEvent("TransferFrameNoResponse: Unable to cope with segmented transfer", ActivityType.TransferLayer);
+                            return false;
+                        }
+
+                        uint delayMicro = m_HostDelay;
+
+                        if (m_TargetDeterminedDelays)
+                        {
+                            if (ST < 0x80)
+                            {
+                                delayMicro = ST * 1000;
+                            }
+                            else if (ST > 0xf0 && ST < 0xfa)
+                            {
+                                // delayMicro = (ST - 0xf0) * 100;
+                                // One could do a blocked delay but it's just wasting resources...
+                                delayMicro = 1000;
+                            }
+                        }
+
+                        /////////////////////
+                        // <21 .. ..>
+                        // <22 .. ..>
+                        // ..
+                        // <2f .. ..>
+                        // <20 .. ..>
+
+                        while (BytesToSend > 0)
+                        {
+                            int thisLen = (BytesToSend > 7) ? 7 : BytesToSend;
+                            BytesToSend -= thisLen;
+
+                            cmd = (ulong)stp;
+                            stp = (stp + 1) & 0x2f;
+
+                            for (int i = 0; i < thisLen; i++)
+                            {
+                                cmd |= (ulong)DataToSend[bufPtr++] << ((i + 1) * 8);
+                            }
+
+                            if (BytesToSend == 0)
+                            {
+                                // Fast-forward queue index
+                                m_parent.canListener.ClearQueue();
+                                if (ExpectedTargetId != 0)
+                                {
+                                    m_parent.canListener.setupWaitMessage(m_TargetId, ExpectedTargetId);
+                                }
+                                else
+                                {
+                                    m_parent.canListener.setupWaitMessage(m_TargetId);
+                                }
+                            }
+
+                            msg.setData(cmd);
+                            if (!m_parent.canUsbDevice.sendMessage(msg))
+                            {
+                                m_parent.CastInfoEvent("TransferFrameNoResponse: Couldn't send message", ActivityType.TransferLayer);
+                                return false;
+                            }
+
+                            if (BytesToSend != 0 && delayMicro > 499)
+                            {
+                                Thread.Sleep((int)(delayMicro + 500) / 1000);
+                            }
+                        }
+                    }
+                    else if ((data & 0xff) == 0x32)
+                    {
+                        m_parent.CastInfoEvent("TransferFrameNoResponse: Target outright refuse to receive frame of this size", ActivityType.TransferLayer);
+                        return false;
+                    }
+                    else
+                    {
+                        m_parent.CastInfoEvent("TransferFrameNoResponse: Unknown response where FlowControl is expected", ActivityType.TransferLayer);
+                        return false;
+                    }
+                }
+            }
+            else
+            {
+                /////////////////////
+                // Extended addressing
+                // Some devices.. *cough* CIM, requires additional junk in the PCI header.
+                if ((BytesToSend & 0x0f) < 7 && (BytesToSend & 0x0f) > 0)
+                {
+                    /////////////////////
+                    // <ADDR _x REQ .. ..>
+                    msg.setLength((byte)((BytesToSend & 7) + 2));
+                    ulong cmd = (ulong)(BytesToSend << 8 | m_ExtendedAddress);
+
+                    for (int i = 0; i < (BytesToSend & 7); i++)
+                    {
+                        cmd |= (ulong)DataToSend[i] << ((i + 2) * 8);
+                    }
+
+                    if (ExpectedTargetId != 0)
+                    {
+                        m_parent.canListener.setupWaitMessage(m_TargetId, ExpectedTargetId);
+                    }
+                    else
+                    {
+                        m_parent.canListener.setupWaitMessage(m_TargetId);
+                    }
+
+                    msg.setData(cmd);
+                    if (!m_parent.canUsbDevice.sendMessage(msg))
+                    {
+                        m_parent.CastInfoEvent("TransferFrameNoResponse: Couldn't send message", ActivityType.TransferLayer);
+                        return false;
+                    }
+                }
+                else
+                {
+                    m_parent.CastInfoEvent("TransferFrameNoResponse: Can't send more than 6 bytes in extended addressing mode", ActivityType.TransferLayer);
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
         // Req 04
         public bool ClearDiagnosticInformation()
         {
@@ -640,7 +884,7 @@ namespace TrionicCANLib.API
         // Req 12 sub (ReadFailureRecordData)
         // Sub 01: readFailureRecordIdentifiers <- this sub-request
         // Sub 02: readFailureRecordParameters
-        public bool ReadFailureRecordIdentifiers(out List <FailureRecord> records)
+        public bool ReadFailureRecordIdentifiers(out List<FailureRecord> records)
         {
             int retLen;
             records = new List<FailureRecord>();
@@ -661,7 +905,7 @@ namespace TrionicCANLib.API
                         FailureRecord record = new FailureRecord();
                         record.Number = ReadData[bufPtr];
                         record.Code = (uint)(ReadData[bufPtr + 1] << 8 | ReadData[bufPtr + 2]);
-                        record.Type = ReadData[bufPtr + 3];
+                        record.FailureType = ReadData[bufPtr + 3];
                         records.Add(record);
                         bufPtr += 4;
                         retLen -= 4;
@@ -680,6 +924,37 @@ namespace TrionicCANLib.API
             DataToSend[0] = 0x20;
 
             return (TransferFrame(1) > 0 && ReadData[0] == 0x60);
+        }
+
+        /// <summary>
+        /// Req 22. This request has only been verified to work. Factual usage of it is kinda vague.
+        /// You also don't know exactly how much data it's going to return per PID so it was determined that one PID at a time is good enough for now
+        /// - (Full implementation can take up to 2047 PIDs per request).
+        /// </summary>
+        /// <param name="PID">16-bit PID</param>
+        /// <returns>response data[] or null</returns>
+        public byte[] ReadDataByParameterIdentifier(int PID)
+        {
+            int retLen;
+
+            DataToSend[0] = 0x22;
+            DataToSend[1] = (byte)(PID >> 8);
+            DataToSend[2] = (byte)(PID);
+
+            if ((retLen = TransferFrame(3)) > 3 &&
+                ReadData[0] == 0x62 && ReadData[1] == (byte)(PID >> 8) && ReadData[2] == (byte)(PID))
+            {
+                byte[] retval = new byte[retLen - 3];
+
+                for (int i = 0; i < (retLen - 3); i++)
+                {
+                    retval[i] = ReadData[3 + i];
+                }
+
+                return retval;
+            }
+
+            return null;
         }
 
         // Req 23 XX XX XX YY YY
@@ -838,6 +1113,110 @@ namespace TrionicCANLib.API
             DataToSend[0] = 0x28;
 
             return (TransferFrame(1) > 0 && ReadData[0] == 0x68);
+        }
+
+        // Req 2c
+        // Unverified. Very similar to WriteDataByIdentifier, that works, so it'll likely work if you find a valid DPID
+        public bool DynamicallyDefineMessage(byte DPID, byte[] data, int len = -1)
+        {
+            int retLen;
+
+            DataToSend[0] = 0x2c;
+            DataToSend[1] = DPID;
+
+            if (len > 0)
+            {
+                // Explicitly specified length of 1 or more
+                if (len > (4095 - 2) || data == null || data.Length < len)
+                {
+                    return false;
+                }
+
+                for (int i = 0; i < len; i++)
+                {
+                    DataToSend[2 + i] = data[i];
+                }
+
+                retLen = TransferFrame(2 + len);
+            }
+            else
+            {
+                if (data != null && len != 0)
+                {
+                    // Retrieve length from data array if not explicit length of 0
+                    if (data.Length > (4095 - 2))
+                    {
+                        return false;
+                    }
+
+                    for (int i = 0; i < data.Length; i++)
+                    {
+                        DataToSend[2 + i] = data[i];
+                    }
+
+                    retLen = TransferFrame(2 + data.Length);
+                }
+                else
+                {
+                    // Write to a ID with no data. (why??)
+                    retLen = TransferFrame(2);
+                }
+            }
+
+            return (retLen > 1 && ReadData[0] == 0x6c && ReadData[1] == DPID);
+        }
+
+        /// <summary>
+        /// Req 2d. Define PID by address.
+        /// - Unverified
+        /// </summary>
+        /// <param name="PID">16-bit identifier</param>
+        /// <param name="Address">16, 24 or 32-bit address</param>
+        /// <param name="bitcount">Size of address, 16,24 or 32 bits</param>
+        /// <param name="Size">Max is 7</param>
+        /// <returns></returns>
+        bool DefinePIDbyAddress(int PID, uint Address, int bitcount, byte Size)
+        {
+            // I bet there are targets that accept more than 7 but the specs say 7 so..
+            // This thing needs some experimentation
+            if (Size > 7)
+            {
+                return false;
+            }
+
+            DataToSend[0] = 0x2d;
+            DataToSend[1] = (byte)(PID >> 8);
+            DataToSend[2] = (byte)(PID);
+
+            switch (bitcount)
+            {
+                // 2d YY YY XX XX
+                case 16:
+                    DataToSend[3] = (byte)(Address >> 8);
+                    DataToSend[4] = (byte)Address;
+                    DataToSend[5] = Size;
+                    return (TransferFrame(6) > 2 &&
+                        ReadData[0] == 0x6d && ReadData[1] == (byte)(PID >> 8) && ReadData[2] == (byte)(PID));
+                // 2d YY YY XX XX XX
+                case 24:
+                    DataToSend[3] = (byte)(Address >> 16);
+                    DataToSend[4] = (byte)(Address >> 8);
+                    DataToSend[5] = (byte)Address;
+                    DataToSend[6] = Size;
+                    return (TransferFrame(7) > 2 &&
+                        ReadData[0] == 0x6d && ReadData[1] == (byte)(PID >> 8) && ReadData[2] == (byte)(PID));
+                // 2d YY YY XX XX XX XX
+                case 32:
+                    DataToSend[3] = (byte)(Address >> 24);
+                    DataToSend[4] = (byte)(Address >> 16);
+                    DataToSend[5] = (byte)(Address >> 8);
+                    DataToSend[6] = (byte)Address;
+                    DataToSend[7] = Size;
+                    return (TransferFrame(8) > 2 &&
+                        ReadData[0] == 0x6d && ReadData[1] == (byte)(PID >> 8) && ReadData[2] == (byte)(PID));
+            }
+
+            return false;
         }
 
         /// <summary>
@@ -1039,13 +1418,7 @@ namespace TrionicCANLib.API
                 DataToSend[0] = 0xa5;
                 DataToSend[1] = lev;
 
-                if (TransferFrame(2) > 0)
-                {
-                    if (ReadData[0] == 0xE5)
-                    {
-                        return true;
-                    }
-                }
+                return (TransferFrame(2) > 0 && ReadData[0] == 0xE5);
             }
             else
             {
@@ -1093,27 +1466,277 @@ namespace TrionicCANLib.API
 
                 return true;
             }
+        }
+
+        // Req a9. "ReadDiagnosticInformation".
+        // 80 readStatusOfDTCByDTCNumber  <- This sub-request
+        // 81 readStatusOfDTCByStatusMask
+        // 82 sendOnChangeDTCCount
+        //
+        // This request is different to many other requests in two ways:
+        // 1. It tend NOT to respond from the usual address
+        // 2. It's of the UUDT type
+        public byte ReadStatusOfDTCByDTCNumber(FailureRecord DTC, uint ExpectedTargetId, out bool success)
+        {
+            CANMessage response, msg = new CANMessage(m_TesterId, 0, 6);
+            ulong resp, cmd = 0x00000080a905;
+            cmd |= (ulong)(DTC.Code & 0xff00) << 16;
+            cmd |= (ulong)(DTC.Code & 0x00ff) << 32;
+            cmd |= (ulong)(DTC.Code & 0x00ff) << 48;
+
+            // Example
+            // > 7E0 05A980012200
+            // < 5E8 80012200FF000000
+
+            success = false;
+            m_HaveFullResponse = false;
+
+            // Fast-forward queue index
+            m_parent.canListener.ClearQueue();
+
+            msg.setData(cmd);
+            m_parent.canListener.setupWaitMessage(ExpectedTargetId, m_TargetId);
+            if (!m_parent.canUsbDevice.sendMessage(msg))
+            {
+                m_parent.CastInfoEvent("readStatusOfDTCByDTCNumber: Couldn't send message", ActivityType.TransferLayer);
+                return 0;
+            }
+
+            response = m_parent.canListener.waitMessage(timeoutP2ct);
+            resp = response.getData();
+
+            if (((cmd>>16) & 0xffffffff) == (resp & 0xffffffff))
+            {
+                success = true;
+                return (byte)(resp >> 32);
+            }
+            else
+            {
+                // Target actively threw an error
+                if ((resp & 0xff) > 0 &&
+                    (resp & 0xff) < 8 &&
+                    (resp & 0xff00) == 0x7f00)
+                {
+                    m_HaveFullResponse = true;
+                }
+
+                return 0;
+            }
+        }
+
+        // Req a9. "ReadDiagnosticInformation".
+        // 80 readStatusOfDTCByDTCNumber
+        // 81 readStatusOfDTCByStatusMask <- This sub-request
+        // 82 sendOnChangeDTCCount
+        //
+        // This request is different to many other requests in two ways:
+        // 1. It tend NOT to respond from the usual address
+        // 2. It's of the UUDT type
+        public List<FailureRecord> ReadStatusOfDTCByStatusMask(byte StatusMask, uint ExpectedTargetId)
+        {
+            List<FailureRecord> records = new List<FailureRecord>();
+            CANMessage response, msg = new CANMessage(m_TesterId, 0, 4);
+            ulong resp, cmd = (ulong)StatusMask << 24 | 0x0081a903;
+
+            m_HaveFullResponse = false;
+
+            // Example
+            // 7E0 03A981FF
+            // 5E8 8100100001000000
+            // 5E8 8100110025000000
+            // 5E8 8100130001000000
+            // .. This goes on and on and on .. and on .. and on.
+            // This thing might need a tester present. The specs are vague
+
+            // Fast-forward queue index
+            m_parent.canListener.ClearQueue();
+
+            msg.setData(cmd);
+            m_parent.canListener.setupWaitMessage(ExpectedTargetId, m_TargetId);
+            if (!m_parent.canUsbDevice.sendMessage(msg))
+            {
+                m_parent.CastInfoEvent("ReadStatusOfDTCByStatusMask: Couldn't send message", ActivityType.TransferLayer);
+                return null;
+            }
+
+            response = m_parent.canListener.waitMessage(timeoutP2ct);
+            resp = response.getData();
+
+            while (resp != 0)
+            {
+                if (((cmd >> 16) & 0xff) == (resp & 0xff))
+                {
+                    // End of report
+                    // 5E8 81000000 FF 000000
+                    if ((resp & 0x00ffffffff) == 0x0000000081)
+                    {
+                        // Stick DTCStatusAvailabilityMask somewhere?
+                        return records;
+                    }
+
+                    FailureRecord record = new FailureRecord();
+                    record.Code = (uint)((resp & 0xff00) | ((resp >> 16) & 0x00ff));
+                    record.FailureType = (byte)(resp >> 24);
+                    record.Status = (byte)(resp >> 32);
+                    records.Add(record);
+
+                    response = m_parent.canListener.waitMessage(timeoutP2ct);
+                    resp = response.getData();
+                }
+                else
+                {
+                    // Target actively threw an error
+                    if ((resp & 0xff) > 0 &&
+                        (resp & 0xff) < 8 &&
+                        (resp & 0xff00) == 0x7f00)
+                    {
+                        m_HaveFullResponse = true;
+                    }
+
+                    return null;
+                }
+            }
+
+            return null;
+        }
+
+        // sendOnChangeDTCCount -Not implemented due to needing major refactoring of other parts of the flasher
+
+        // Req aa.
+        // 00 stopSending
+        // 01 sendOneResponse
+        // 02 scheduleAtSlowRate
+        // 03 scheduleAtMediumRate
+        // 04 scheduleAtFastRate
+        public bool ReadDataByPacketIdentifier(byte func, byte[] DPID, uint ExpectedTargetId)
+        {
+            // All requests except "stop all" needs a list of DPIDs
+            if (((DPID == null || DPID.Count() == 0) && func != 0) ||
+                (DPID != null && DPID.Count() > (4095 - 2)))
+            {
+                return false;
+            }
+
+            int pidLen = 0;
+
+            DataToSend[0] = 0xaa;
+            DataToSend[1] = func;
+
+            // Succ:
+            // CN: 7E0 03AA01EF         (00 0 44516 09.698)
+            // CN: 5E8 EF00000000000000 (00 0 53538 09.022)
+
+            // Fail:
+            // CN: 7E0 03AA0101         (00 0 09793 04.556)
+            // CN: 7E8 037FAA31AAAAAAAA (00 0 11433 01.640)
+
+            if (DPID != null)
+            {
+                pidLen = DPID.Length;
+            }
+
+            for (int i = 0; i < pidLen; i++)
+            {
+                DataToSend[2 + i] = DPID[i];
+            }
+
+            if (TransferFrameNoResponse(2 + pidLen, ExpectedTargetId) == false)
+            {
+                return false;
+            }
+
+            CANMessage response = m_parent.canListener.waitMessage(timeoutP2ct);
+            ulong resp = response.getData();
+
+            if (response.getID() == m_TargetId ||
+                response.getID() == ExpectedTargetId)
+            {
+                // Target actively threw an error
+                if ((resp & 0xff) > 0 &&
+                    (resp & 0xff) < 8 &&
+                    (resp & 0xff00) == 0x7f00)
+                {
+                    // Store the error where it's actually supposed to go and flag that there's a complete error message to read
+                    for (int i = 0; i < 8; i++)
+                    {
+                        resp >>= 8;
+                        ReadData[i] = (byte)resp;
+                    }
+
+                    m_HaveFullResponse = true;
+                    return false;
+                }
+
+                if (func == 0 && (resp & 0xff) != 0)
+                {
+                    return false;
+                }
+                else
+                {
+                    // Actual reading is supposed to happen through an external listener so no returned data.
+                    // Why: request 1, 2, 3, 4 will all throw messages out there with their corresponding DPID as the first byte.
+                    // - There's no order to them and you don't know exactly when they'll arrive
+                    return true;
+                }
+            }
 
             return false;
         }
 
-        public void SafeDefaults(uint TesterID = 0x7E0, uint TargetID = 0x7E8)
+        public bool ReadDataByPacketIdentifier(byte func, byte DPID, uint ExpectedTargetId)
         {
-            m_TesterId = TesterID;
-            m_TargetId = TargetID;
+            return ReadDataByPacketIdentifier(func, new byte[] { DPID }, ExpectedTargetId);
+        }
 
-            m_ExtendedAddressing = false;
+        // Req ae .. .. ..
+        // Another one of those that "should" work. Need better understanding of the test target to verify this
+        public bool DeviceControl(byte[] data, byte CPID, int len = -1)
+        {
+            int retLen;
 
-            m_HaveFullResponse = false;
+            DataToSend[0] = 0xae;
+            DataToSend[1] = CPID;
 
-            // Always wait one ms between sent conseuctive frames
-            // Host -> target
-            m_HostDelay = 1000;
-            m_TargetDeterminedDelays = false;
+            if (len > 0)
+            {
+                // Explicitly specified length of 1 or more
+                if (len > (4095 - 2) || data == null || data.Length < len)
+                {
+                    return false;
+                }
 
-            // Requested target -> host delay for consecutive frames
-            // This is encoded as one ms
-            m_TargetDelay = 1;
+                for (int i = 0; i < len; i++)
+                {
+                    DataToSend[2 + i] = data[i];
+                }
+
+                retLen = TransferFrame(2 + len);
+            }
+            else
+            {
+                if (data != null && len != 0)
+                {
+                    // Retrieve length from data array if not explicit length of 0
+                    if (data.Length > (4095 - 2))
+                    {
+                        return false;
+                    }
+
+                    for (int i = 0; i < data.Length; i++)
+                    {
+                        DataToSend[2 + i] = data[i];
+                    }
+
+                    retLen = TransferFrame(2 + data.Length);
+                }
+                else
+                {
+                    // Write to a CPID with no data. (why??)
+                    retLen = TransferFrame(2);
+                }
+            }
+
+            return (retLen > 1 && ReadData[0] == 0xee && ReadData[1] == CPID);
         }
     }
 }

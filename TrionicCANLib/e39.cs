@@ -46,7 +46,7 @@ namespace TrionicCANLib.API
 
         private Logger logger = LogManager.GetCurrentClassLogger();
 
-        static public List<uint> FilterIdECU = new List<uint> { 0x7E0, 0x7E8 };
+        static public List<uint> FilterIdECU = new List<uint> { 0x7E0, 0x7E8, 0x5E8 };
 
         public override bool FormatBootPartition
         {
@@ -1119,7 +1119,7 @@ namespace TrionicCANLib.API
             // Some paranoia for ya..
             CastInfoEvent("Verifying target compatibility..", ActivityType.ConvertingFile);
 
-            byte[] procBytes = gmlan.ReadByIdentifier(0x92);
+            byte[] procBytes = gmlan.ReadDataByIdentifier(0x92);
             if (procBytes == null || procBytes.Length != 4)
             {
                 CastInfoEvent("Could not verify. Aborting..", ActivityType.ConvertingFile);
@@ -1794,7 +1794,7 @@ namespace TrionicCANLib.API
                     foreach (FailureRecord record in records)
                     {
                         CastInfoEvent("Record " + record.Number.ToString("D2") + ": " + record.Code.ToString("X04") +
-                            " " + record.Type.ToString("X02"), ActivityType.QueryingTroubleCodes);
+                            " " + record.FailureType.ToString("X02"), ActivityType.QueryingTroubleCodes);
                     }
 
                     CastInfoEvent("No further codes", ActivityType.QueryingTroubleCodes);
@@ -1925,5 +1925,132 @@ namespace TrionicCANLib.API
         // Functional System Addresses
         // FD: Gateway device
         // FE: All functional systems (AllNode)
+
+        // Verified
+        private void PacketTest()
+        {
+            DefaultGmlan();
+
+            SendKeepAlive();
+            gmlan.InitiateDiagnosticOperation(4);
+            if (!gmlan.SecurityAccess(ECU.DELCOE39, 1))
+            {
+                return;
+            }
+            SendKeepAlive();
+            gmlan.DisableNormalCommunication();
+            gmlan.ReportProgrammedState();
+            gmlan.ProgrammingMode(1);
+            gmlan.ProgrammingMode(3);
+            SendKeepAlive();
+
+
+            CANListener broadcastListener = new CANListener();
+            canUsbDevice.addListener(broadcastListener);
+            broadcastListener.setupWaitMessage(0x5E8);
+
+            // Request broadcast of this DPID every "insert interval"
+            gmlan.ReadDataByPacketIdentifier(3, 0xef, 0x5E8);
+
+
+            Stopwatch stopWatch = new Stopwatch();
+            stopWatch.Start();
+            int cntr = 0;
+
+            while (true)
+            {
+                TimeSpan tSpent = stopWatch.Elapsed;
+                int msElapsed = tSpent.Milliseconds;
+                msElapsed += tSpent.Seconds * 1000;
+                msElapsed += tSpent.Minutes * 60000;
+
+                if (msElapsed > 1000)
+                {
+                    SendKeepAlive();
+                    stopWatch.Restart();
+
+                    if (cntr++ == 10)
+                    {
+                        break;
+                    }
+                }
+
+                CANMessage response = broadcastListener.waitMessage(timeoutP2ct);
+                ulong resp = response.getData();
+
+                if (resp != 0 || response.getID() != 0)
+                {
+                    CastInfoEvent("Received data: " + resp.ToString("X16"), ActivityType.FinishedDownloadingFlash);
+                }
+            }
+
+            // Is this even necessary?
+            canUsbDevice.removeListener(broadcastListener);
+        }
+
+        private void MiscTest()
+        {
+            DefaultGmlan();
+
+            SendKeepAlive();
+            gmlan.InitiateDiagnosticOperation(4);
+            if (!gmlan.SecurityAccess(ECU.DELCOE39, 1))
+            {
+                return;
+            }
+            SendKeepAlive();
+            gmlan.DisableNormalCommunication();
+            gmlan.ReportProgrammedState();
+            gmlan.ProgrammingMode(1);
+            gmlan.ProgrammingMode(3);
+            SendKeepAlive();
+
+            // Verified
+            gmlan.ReadDataByParameterIdentifier(0x0001);
+
+            // Hard to verify without intimate knowledge of the target in question. It "should work"
+            gmlan.DynamicallyDefineMessage(1, null);
+        }
+
+        // Verified
+        private void fcodeTest()
+        {
+            DefaultGmlan();
+
+            SendKeepAlive();
+            gmlan.InitiateDiagnosticOperation(4);
+            if (!gmlan.SecurityAccess(ECU.DELCOE39, 1))
+            {
+                return;
+            }
+            SendKeepAlive();
+            gmlan.DisableNormalCommunication();
+            gmlan.ReportProgrammedState();
+            gmlan.ProgrammingMode(1);
+            gmlan.ProgrammingMode(3);
+            SendKeepAlive();
+
+            List<FailureRecord> records;
+            if (gmlan.ReadFailureRecordIdentifiers(out records))
+            {
+                bool succ;
+                byte status = gmlan.ReadStatusOfDTCByDTCNumber(records[0], 0x5E8, out succ);
+                CastInfoEvent("Status: " + status.ToString("X02"), ActivityType.ConvertingFile);
+
+                List<FailureRecord> failrec = gmlan.ReadStatusOfDTCByStatusMask(status, 0x5E8);
+                if (failrec != null)
+                {
+                    CastInfoEvent("Got: " + failrec.Count.ToString("D") + " records", ActivityType.ConvertingFile);
+                    foreach (FailureRecord record in failrec)
+                    {
+                        // 81 C140 00 59 000000
+                        CastInfoEvent("Code : " +
+                            record.Code.ToString("X04") + " " +
+                            record.FailureType.ToString("X02") + " " +
+                            record.Status.ToString("X02"), ActivityType.QueryingTroubleCodes);
+                    }
+                }
+            }
+        }
     }
 }

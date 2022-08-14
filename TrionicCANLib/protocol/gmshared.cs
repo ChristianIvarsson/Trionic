@@ -17,14 +17,15 @@ using TrionicCANLib.SeedKey;
 namespace TrionicCANLib.API
 {
     // For retrieval of error codes 
-    public struct FailureRecord
+    public class FailureRecord
     {
         // Record number
-        public uint Number;
+        public uint Number = 0;
         // Error code
-        public uint Code;
-        // What caused it to fail. Manufacturer specific
-        public uint Type;
+        public uint Code = 0;
+        // These are manufacturer specific and depending how the record is used, might not even be set
+        public uint FailureType = 0;
+        public uint Status = 0;
     }
 
     // Used by "ReadDIDList" to retrieve a chunk of specified DIDs
@@ -131,7 +132,7 @@ namespace TrionicCANLib.API
 
         // Req 1a id
         // aka kwp2k readDataByLocalIdentifier
-        public byte[] ReadByIdentifier(byte id)
+        public byte[] ReadDataByIdentifier(byte id)
         {
             int retLen;
 
@@ -268,7 +269,7 @@ namespace TrionicCANLib.API
 
         // Req 3b id ..
         // aka kwp2k writeDataByLocalIdentifier
-        public bool WriteDataByIdentifier(byte[] dat, byte id, int len = -1)
+        public bool WriteDataByIdentifier(byte[] data, byte id, int len = -1)
         {
             int retLen;
 
@@ -278,34 +279,34 @@ namespace TrionicCANLib.API
             if (len > 0)
             {
                 // Explicitly specified length of 1 or more
-                if (len > (4095 - 2) || dat == null || dat.Length < len)
+                if (len > (4095 - 2) || data == null || data.Length < len)
                 {
                     return false;
                 }
 
                 for (int i = 0; i < len; i++)
                 {
-                    DataToSend[2 + i] = dat[i];
+                    DataToSend[2 + i] = data[i];
                 }
 
                 retLen = TransferFrame(2 + len);
             }
             else
             {
-                if (dat != null && len != 0)
+                if (data != null && len != 0)
                 {
                     // Retrieve length from data array if not explicit length of 0
-                    if (dat.Length > (4095 - 2))
+                    if (data.Length > (4095 - 2))
                     {
                         return false;
                     }
 
-                    for (int i = 0; i < dat.Length; i++)
+                    for (int i = 0; i < data.Length; i++)
                     {
-                        DataToSend[2 + i] = dat[i];
+                        DataToSend[2 + i] = data[i];
                     }
 
-                    retLen = TransferFrame(2 + dat.Length);
+                    retLen = TransferFrame(2 + data.Length);
                 }
                 else
                 {
@@ -331,7 +332,7 @@ namespace TrionicCANLib.API
             foreach (ReadDIDInfo id in idlist)
             {
                 string Row = id.Readable + ": ";
-                byte[] tmp = ReadByIdentifier(id.DID);
+                byte[] tmp = ReadDataByIdentifier(id.DID);
                 bool ConversionError = false;
 
                 if (tmp == null)
@@ -413,7 +414,7 @@ namespace TrionicCANLib.API
         {
             for (int i = 0; i < 0x100; i++)
             {
-                byte[] tmp = ReadByIdentifier((byte)i);
+                byte[] tmp = ReadDataByIdentifier((byte)i);
 
                 if (tmp != null)
                 {
