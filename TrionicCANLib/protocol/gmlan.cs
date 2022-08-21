@@ -24,7 +24,7 @@ It's also not designed to deal with broadcasts where more than one target respon
 You can, however, use extended addressing if you want.
 - Just set "ExtendedAddressing" to true and store an address in "ExtendedAddress".
 - Caveat is that you can not send a request larger than 6 bytes (According to spec).
-- - Some devices (CIM) use the high nibble of PCI to declare various things so you can OR in that together with the legnth. -Just make sure the low nibble is 1-6.
+- - Some devices (CIM) use the high nibble of PCI to declare various things so you can OR in that together with the length. -Just make sure the low nibble is 1-6.
 - - ie 92 is interpreted as 02 but it will still include the high nibble in the sent data.
 
 This handler is also quite slow. It's not meant to replace fast methods for memory read and write. It's a tool for generic requests (and removal of clutter).
@@ -179,18 +179,23 @@ namespace TrionicCANLib.API
                 {
                     return "No error";
                 }
-                // THIS request failed due to..
-                else if (ReadData[0] == 0x7f && ReadData[1] == REQ)
-                {
-                    return TranslateErrorCode(ReadData[2]);
-                }
-                // SOME request failed due to..
+                // Actively thrown error code
                 else if (ReadData[0] == 0x7f)
                 {
-                    return "Request " + ReadData[1].ToString("X02") + " threw " + TranslateErrorCode(ReadData[2]);
+                    // THIS request failed due to..
+                    if (ReadData[1] == REQ)
+                    {
+                        return TranslateErrorCode(ReadData[2]);
+                    }
+                    // SOME request failed due to..
+                    else
+                    {
+                        return "Request " + ReadData[1].ToString("X02") + " threw " + TranslateErrorCode(ReadData[2]);
+                    }
                 }
 
-                return "Unknown response " + ReadData[1].ToString("X02");
+                // Not an actively thrown error.. so what is it?
+                return "Unknown response " + ReadData[0].ToString("X02" + ".. Check canlog");
             }
             // Probably not even a fault but it could also be a unexpected response from another request
             else if (ReadData[0] != 0x7f)
@@ -523,11 +528,11 @@ namespace TrionicCANLib.API
                 }
             }
 
-        /////////////////////
-        // Receive
+            /////////////////////
+            // Receive
 
-        // The one and only "retry-handler" inside the frame method.
-        // GMLAN dictates that a target could delay responses while busy
+            // The one and only "retry-handler" inside the frame method.
+            // GMLAN dictates that a target could delay responses while busy
         ResponsePending:
 
             response = m_parent.canListener.waitMessage(timeoutP2ct);
@@ -1172,7 +1177,7 @@ namespace TrionicCANLib.API
         /// </summary>
         /// <param name="PID">16-bit identifier</param>
         /// <param name="Address">16, 24 or 32-bit address</param>
-        /// <param name="bitcount">Size of address, 16,24 or 32 bits</param>
+        /// <param name="bitcount">Size of address, 16, 24 or 32 bits</param>
         /// <param name="Size">Max is 7</param>
         /// <returns></returns>
         bool DefinePIDbyAddress(int PID, uint Address, int bitcount, byte Size)
