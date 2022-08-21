@@ -221,9 +221,9 @@ namespace TrionicCANLib.API
             }
 
             SeedToKey s2k = new SeedToKey();
-            byte[] keyBuffer = s2k.CalculateKeyForTarget(SeedBuffer, ecu, level, mode);
+            byte[] KeyBuffer = s2k.CalculateKeyForTarget(SeedBuffer, ecu, level, mode);
 
-            if (keyBuffer == null || keyBuffer.Length == 0 || keyBuffer.Length > (4095 - 2))
+            if (KeyBuffer == null || KeyBuffer.Length == 0 || KeyBuffer.Length > (4095 - 2))
             {
                 m_parent.CastInfoEvent("SecurityAccess: Could not calculate key for target", ActivityType.TransferLayer);
                 return false;
@@ -231,13 +231,13 @@ namespace TrionicCANLib.API
 
             DataToSend[1] = (byte)(level + 1);
 
-            for (int i = 0; i < keyBuffer.Length; i++)
+            for (int i = 0; i < KeyBuffer.Length; i++)
             {
-                DataToSend[2 + i] = keyBuffer[i];
+                DataToSend[2 + i] = KeyBuffer[i];
             }
 
             // <27 level> --> <67 level>
-            if (TransferFrame(2 + keyBuffer.Length) < 2)
+            if (TransferFrame(2 + KeyBuffer.Length) < 2)
             {
                 m_parent.CastInfoEvent("SecurityAccess: No or unexpected response", ActivityType.TransferLayer);
                 return false;
@@ -410,7 +410,7 @@ namespace TrionicCANLib.API
         /// <summary>
         /// Simplified method for retrieval of _ALL_ target IDs
         /// </summary>
-        private void TryAllIds()
+        public void TryAllIds()
         {
             for (int i = 0; i < 0x100; i++)
             {
