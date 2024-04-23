@@ -241,6 +241,17 @@ namespace TrionicCANLib.CAN
                     AcceptanceMask,
                     Lawicel.CANUSB.CANUSB_FLAG_TIMESTAMP);
             }
+            else if (TrionicECU == ECU.DELCOE39_BAM)
+            {
+                //I bus wasn't connected.
+                //Check if P bus is connected
+                logger.Debug("Lawicel.CANUSB.canusb_Open()");
+                m_deviceHandle = Lawicel.CANUSB.canusb_Open(SelectedAdapter,
+                CAN_BAUD_BTR_400K,
+                AcceptanceCode,
+                AcceptanceMask,
+                Lawicel.CANUSB.CANUSB_FLAG_TIMESTAMP);
+            }
             else
             {
                 //I bus wasn't connected.

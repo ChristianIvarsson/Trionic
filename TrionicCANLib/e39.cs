@@ -47,6 +47,7 @@ namespace TrionicCANLib.API
         private Logger logger = LogManager.GetCurrentClassLogger();
 
         static public List<uint> FilterIdECU = new List<uint> { 0x7E0, 0x7E8, 0x5E8 };
+        static public List<uint> FilterIdECUBAM = new List<uint> { 0x7E0, 0x7E8, 0x5E8, 0x011, 0x001, 0x012, 0x002, 0x013, 0x003 };
 
         public override bool FormatBootPartition
         {
@@ -230,6 +231,11 @@ namespace TrionicCANLib.API
             public override bool TroubleCodes { get { return true; } }
         }
 
+        private class bamfeatures : TargetFeatures
+        {
+            public override bool FlashFull { get { return true; } }
+        }
+
         private class e78features : TargetFeatures
         {
             public override bool FlashFull { get { return true; } }
@@ -239,6 +245,7 @@ namespace TrionicCANLib.API
 
         private TargetFeatures e39feats = new e39features();
         private TargetFeatures e78feats = new e78features();
+        private TargetFeatures bamfeats = new bamfeatures();
 
         public override ref TargetFeatures GetFeatures(ECU ecu)
         {
@@ -246,6 +253,8 @@ namespace TrionicCANLib.API
             {
                 case ECU.DELCOE39:
                     return ref e39feats;
+                case ECU.DELCOE39_BAM:
+                    return ref bamfeats;
                 case ECU.DELCOE78:
                     return ref e78feats;
             }
@@ -327,17 +336,33 @@ namespace TrionicCANLib.API
                 canUsbDevice = new J2534CANDevice();
             }
 
-            canUsbDevice.bypassCANfilters = m_filterBypass;
+            if (m_ECU == ECU.DELCOE39_BAM)
+            {
+                canUsbDevice.bypassCANfilters = true;
+            }
+            else
+            {
+                canUsbDevice.bypassCANfilters = m_filterBypass;
+            }
             canUsbDevice.UseOnlyPBus = m_OnlyPBus;
-            canUsbDevice.TrionicECU = ECU.DELCOE39;
+            canUsbDevice.TrionicECU = m_ECU;
             canUsbDevice.onReceivedAdditionalInformation += new ICANDevice.ReceivedAdditionalInformation(canUsbDevice_onReceivedAdditionalInformation);
             canUsbDevice.onReceivedAdditionalInformationFrame += new ICANDevice.ReceivedAdditionalInformationFrame(canUsbDevice_onReceivedAdditionalInformationFrame);
             if (canListener == null)
             {
                 canListener = new CANListener();
             }
+
             canUsbDevice.addListener(canListener);
-            canUsbDevice.AcceptOnlyMessageIds = FilterIdECU;
+
+            if (m_ECU == ECU.DELCOE39_BAM)
+            {
+                canUsbDevice.AcceptOnlyMessageIds = FilterIdECUBAM;
+            }
+            else
+            {
+                canUsbDevice.AcceptOnlyMessageIds = FilterIdECU;
+            }
         }
 
         override public void SetSelectedAdapter(string adapter)
@@ -394,7 +419,6 @@ namespace TrionicCANLib.API
         {
             try
             {
-                m_ECU = ECU.TRIONIC8;
                 tmr.Stop();
                 MM_EndPeriod(1);
                 logger.Debug("Cleanup called in e39");
@@ -1766,6 +1790,9 @@ namespace TrionicCANLib.API
                 case ECU.DELCOE39:
                     WriteFlashE39(workEvent, arguments.FileName);
                     break;
+                case ECU.DELCOE39_BAM:
+                    e39BamSession(workEvent, arguments.FileName);
+                    break;
                 case ECU.DELCOE78:
                     WriteFlashE78(workEvent, arguments.FileName);
                     break;
@@ -1892,6 +1919,166 @@ namespace TrionicCANLib.API
                 CastInfoEvent("Download failed", ActivityType.FinishedDownloadingFlash);
                 workEvent.Result = false;
             }
+        }
+
+        private void e39BamSession(DoWorkEventArgs workEvent, string FileName)
+        {
+            byte[] filebytes = File.ReadAllBytes(FileName);
+
+            // Placeholder to prevent myself from doing stupid sh..
+            if (filebytes.Length != 0x300000 + 1024)
+            {
+                CastInfoEvent("Incorrect file size", ActivityType.ConvertingFile);
+                return;
+            }
+
+            ulong key = 0;
+
+            for (int i = 0; i < 8; i++)
+            {
+                key <<= 8;
+                key |= filebytes[0x300000 + 0x1d8 + i];
+            }
+
+            CastInfoEvent("Trying key: " + key.ToString("X16"), ActivityType.ConvertingFile);
+
+            _stallKeepAlive = true;
+
+            if (BAMflash(e39e78LoaderBase, key))
+            {
+                bool recoveredSession = false;
+                uint lockedPartitions = 0;
+                uint forcedPartitions = 0;
+
+                if (!InitCommonE39(out recoveredSession))
+                {
+                    return;
+                }
+
+                mpc5566ActFlash(workEvent, FileName, ECU.DELCOE39, lockedPartitions, forcedPartitions, recoveredSession);
+            }
+        }
+
+        private ulong lazySWAP(ulong data)
+        {
+            ulong retval = 0;
+            for (int i = 0; i < 8; i++)
+            {
+                retval <<= 8;
+                retval |= (data & 0xff);
+                data >>= 8;
+            }
+            return retval;
+        }
+
+        // To be moved somewhere else. It's only here while in the thrash branch
+        private bool BAMflash(uint address, ulong key)
+        {
+            CANMessage msg = new CANMessage(0x11, 0, 8);
+            CANMessage response = new CANMessage();
+            uint tries = 5000;
+            ulong cmd = lazySWAP(key);
+            ulong respData = 0;
+
+            do
+            {
+                msg.setData(cmd);
+                canListener.setupWaitMessage(1);
+                if (!canUsbDevice.sendMessage(msg))
+                {
+                    CastInfoEvent("Couldn't send message", ActivityType.ConvertingFile);
+                    return false;
+                }
+
+                response = canListener.waitMessage(90);
+                respData = response.getData();
+
+                if ((tries & 15) == 0)
+                {
+                    CastInfoEvent("..", ActivityType.ConvertingFile);
+                }
+
+                if (--tries == 0)
+                {
+                    CastInfoEvent("Could not start BAM", ActivityType.ConvertingFile);
+                    return false;
+                }
+            } while (respData != lazySWAP(key));
+
+            // if (respData == lazySWAP(bamKEY))
+            {
+                CastInfoEvent("Key accepted", ActivityType.ConvertingFile);
+                Bootloader_mpc5566_bam m_bootloader = new TrionicCANLib.Bootloader_mpc5566_bam();
+                uint bytesLeft = (uint)m_bootloader.Bootloader_mpc5566Bytes_bam.Length;
+                byte[] allignedData = new byte[(bytesLeft & ~7) + 8];
+                uint i;
+                for (i = 0; i < bytesLeft; i++)
+                {
+                    allignedData[i] = m_bootloader.Bootloader_mpc5566Bytes_bam[i];
+                }
+                for (; i < allignedData.Length; i++)
+                {
+                    allignedData[i] = 0;
+                }
+
+                bytesLeft = (uint)(allignedData.Length);
+
+                msg = new CANMessage(0x12, 0, 8);
+                cmd = lazySWAP((ulong)address << 32 | bytesLeft);
+                msg.setData(cmd);
+
+                canListener.setupWaitMessage(2);
+                if (!canUsbDevice.sendMessage(msg))
+                {
+                    CastInfoEvent("Couldn't send message", ActivityType.ConvertingFile);
+                    // Do not return here want to wait for the response
+                }
+
+                response = canListener.waitMessage(200);
+                respData = response.getData();
+                uint bufPntr = 0;
+
+                if (respData == cmd)
+                {
+                    CastInfoEvent("Address and length accepted", ActivityType.ConvertingFile);
+
+                    msg = new CANMessage(0x13, 0, 8);
+                    while (bytesLeft > 0)
+                    {
+                        cmd = 0;
+                        for (int e = 0; e < 8; e++)
+                        {
+                            cmd |= (ulong)allignedData[bufPntr++] << (e * 8);
+                        }
+
+                        cmd = lazySWAP(cmd);
+                        msg.setData(lazySWAP(cmd));
+
+                        canListener.setupWaitMessage(3);
+                        if (!canUsbDevice.sendMessage(msg))
+                        {
+                            CastInfoEvent("Couldn't send message", ActivityType.ConvertingFile);
+                            // Do not return here want to wait for the response
+                        }
+
+                        response = canListener.waitMessage(200);
+                        respData = response.getData();
+
+                        if (respData != lazySWAP(cmd))
+                        {
+                            CastInfoEvent("Did not receive the same data: " + respData.ToString("X16"), ActivityType.ConvertingFile);
+                            return false;
+                        }
+
+                        bytesLeft -= 8;
+                    }
+
+                    return true;
+                }
+            }
+
+            CastInfoEvent("ECU gave an unkown response", ActivityType.ConvertingFile);
+            return false;
         }
 
         // Example broadcast init diag level 2

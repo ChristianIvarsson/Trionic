@@ -479,7 +479,8 @@ namespace TrionicCANLib.API
 
                             if (BytesToSend != 0 && delayMicro > 499)
                             {
-                                Thread.Sleep((int)(delayMicro + 500) / 1000);
+                                // Thread.Sleep( 3 );
+                                Thread.Sleep( (int)(delayMicro + 500) / 1000 );
                             }
                         }
                     }

@@ -23,6 +23,8 @@ namespace TrionicCANLib.CAN
         public const byte CAN_BAUD_BTR_33K_btr1 = 0x2F;
         public const byte CAN_BAUD_BTR_47K_btr0 = 0xcb; // 47,6 kbit/s SAAB T7 I-bus
         public const byte CAN_BAUD_BTR_47K_btr1 = 0x9a;
+        public const byte CAN_BAUD_BTR_400K_btr0 = 0x00; // 400 kbit/s AcDelco e39 BAM mode
+        public const byte CAN_BAUD_BTR_400K_btr1 = 0x2f;
         public const byte CAN_BAUD_BTR_615K_btr0 = 0x40; // 615 kbit/s SAAB T5
         public const byte CAN_BAUD_BTR_615K_btr1 = 0x37;
 
@@ -232,6 +234,26 @@ namespace TrionicCANLib.CAN
                 }
 
                 logger.Debug("P bus connected");
+                m_endThread = false;
+                if (m_readThread.ThreadState == ThreadState.Unstarted)
+                {
+                    m_readThread.Start();
+                }
+                return OpenResult.OK;
+            }
+
+            if (TrionicECU == ECU.DELCOE39_BAM)
+            {
+                OpenChannelWithParamsC200(out handleWrite, CAN_BAUD_BTR_400K_btr0, CAN_BAUD_BTR_400K_btr1);
+                OpenChannelWithParamsC200(out handleRead, CAN_BAUD_BTR_400K_btr0, CAN_BAUD_BTR_400K_btr1);
+                Canlib.canSetAcceptanceFilter(handleRead, 0xFFF, 0x000, 0);
+
+                if (handleWrite < 0 || handleRead < 0)
+                {
+                    return OpenResult.OpenError;
+                }
+
+                logger.Debug("Recovery bus connected");
                 m_endThread = false;
                 if (m_readThread.ThreadState == ThreadState.Unstarted)
                 {

@@ -99,6 +99,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="bootloaders\Bootloader_mpc5566.cs" />
+    <Compile Include="bootloaders\Bootloader_mpc5566_bam.cs" />
     <Compile Include="CAN\J2534CANDevice.cs" />
     <Compile Include="Checksum\ChecksumDelegate.cs" />
     <Compile Include="Checksum\ChecksumE39.cs" />

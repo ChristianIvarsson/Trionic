@@ -68,8 +68,9 @@ namespace TrionicCANFlasher
         {
             EcuTargets = new ECUDesc[]
             {
-                new ECUDesc { Target = delcoe39  , ecu = ECU.DELCOE39    , Name = "ACDelco E39" },
-                new ECUDesc { Target = delcoe39  , ecu = ECU.DELCOE78    , Name = "ACDelco E78" },
+                new ECUDesc { Target = delcoe39  , ecu = ECU.DELCOE39     , Name = "ACDelco E39" },
+                new ECUDesc { Target = delcoe39  , ecu = ECU.DELCOE39_BAM , Name = "ACDelco E39 BAM recovery" },
+                new ECUDesc { Target = delcoe39  , ecu = ECU.DELCOE78     , Name = "ACDelco E78" },
             };
         }
 
@@ -417,6 +418,7 @@ namespace TrionicCANFlasher
             trionic.LegionOptions.Faster = AppSettings.Faster;
             trionic.LegionOptions.InterframeDelay = AppSettings.InterframeDelay.Value;
             trionic.LegionOptions.UseLastMarker = AppSettings.UseLastMarker;
+            trionic.ECU = EcuTargets[cbxEcuType.SelectedIndex].ecu;
 
             m_bypassCANfilters = false;
  

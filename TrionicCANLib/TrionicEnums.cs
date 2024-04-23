@@ -67,8 +67,11 @@ namespace TrionicCANLib.API
 
         [Description("ACDelco E39")]
         DELCOE39,
+        [Description("ACDelco E39 BAM recovery")]
+        DELCOE39_BAM,
         [Description("ACDelco E78")]
         DELCOE78,
+
 
         // Sorry for moving these but the enumration gets borked when items are "disabled"
 
