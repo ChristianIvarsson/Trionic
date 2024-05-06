@@ -221,7 +221,7 @@ namespace TrionicCANLib.KWP
 
             m_kwpCanListener.setupWaitMessage(0x238);
             
-            if (!m_canDevice.sendMessage(msg))
+            if (!m_canDevice.sendMessage(ref msg))
             {
                 logger.Debug("Unable to send 0x000040021100813F message");
                 return false;
@@ -264,7 +264,7 @@ namespace TrionicCANLib.KWP
                 {
                     msg.elmExpectedResponses = row == 1 ? 1 : 0; // on last message (expect 1 reply)
                 }
-                if (!m_canDevice.sendMessage(msg))
+                if (!m_canDevice.sendMessage(ref msg))
                 {
                     r_reply = new KWPReply();
                     return RequestResult.ErrorSending;
@@ -437,7 +437,7 @@ namespace TrionicCANLib.KWP
             data = setCanData(data, (byte)0x3F, i++);
             data = setCanData(data, (byte)(0x80 | (int)(a_rowNr)), i++);
             msg.setData(data);
-            if (!m_canDevice.sendMessage(msg))
+            if (!m_canDevice.sendMessage(ref msg))
                 throw new Exception("Error sending ack");
 
         }

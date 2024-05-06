@@ -449,12 +449,11 @@ namespace TrionicCANLib.API
         private void SendKeepAlive()
         {
             CANMessage msg = new CANMessage(0x7E0, 0, 2);
-            ulong cmd = 0x0000000000003E01; // always 2 bytes
-            msg.setData(cmd);
+            msg.setData(0x0000000000003E01);
             msg.elmExpectedResponses = 1;
             //logger.Debug("KA sent");
             canListener.setupWaitMessage(0x7E8);
-            if (!canUsbDevice.sendMessage(msg))
+            if (!canUsbDevice.sendMessage(ref msg))
             {
                 CastInfoEvent("Couldn't send message", ActivityType.ConvertingFile);
                 return;
@@ -467,11 +466,10 @@ namespace TrionicCANLib.API
         private void BroadcastKeepAlive101()
         {
             CANMessage msg = new CANMessage(0x101, 0, 2);
-            ulong cmd = 0x0000000000003E01;
-            msg.setData(cmd);
+            msg.setData(0x0000000000003E01);
             msg.elmExpectedResponses = 1;
 
-            if (!canUsbDevice.sendMessage(msg))
+            if (!canUsbDevice.sendMessage(ref msg))
             {
                 CastInfoEvent("Couldn't send message", ActivityType.ConvertingFile);
                 return;
@@ -1982,9 +1980,9 @@ namespace TrionicCANLib.API
 
             do
             {
-                msg.setData(cmd);
+                msg.setData(ref cmd);
                 canListener.setupWaitMessage(1);
-                if (!canUsbDevice.sendMessage(msg))
+                if (!canUsbDevice.sendMessage(ref msg))
                 {
                     CastInfoEvent("Couldn't send message", ActivityType.ConvertingFile);
                     return false;
@@ -2025,10 +2023,10 @@ namespace TrionicCANLib.API
 
                 msg = new CANMessage(0x12, 0, 8);
                 cmd = lazySWAP((ulong)address << 32 | bytesLeft);
-                msg.setData(cmd);
+                msg.setData(ref cmd);
 
                 canListener.setupWaitMessage(2);
-                if (!canUsbDevice.sendMessage(msg))
+                if (!canUsbDevice.sendMessage(ref msg))
                 {
                     CastInfoEvent("Couldn't send message", ActivityType.ConvertingFile);
                     // Do not return here want to wait for the response
@@ -2051,11 +2049,11 @@ namespace TrionicCANLib.API
                             cmd |= (ulong)allignedData[bufPntr++] << (e * 8);
                         }
 
+                        msg.setData(ref cmd);
                         cmd = lazySWAP(cmd);
-                        msg.setData(lazySWAP(cmd));
 
                         canListener.setupWaitMessage(3);
-                        if (!canUsbDevice.sendMessage(msg))
+                        if (!canUsbDevice.sendMessage(ref msg))
                         {
                             CastInfoEvent("Couldn't send message", ActivityType.ConvertingFile);
                             // Do not return here want to wait for the response

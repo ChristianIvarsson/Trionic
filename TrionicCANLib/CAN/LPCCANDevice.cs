@@ -323,7 +323,7 @@ public class LPCCANDevice : ICANDevice
       
         @return                 success (true/false) 
     */
-    protected override bool sendMessageDevice(CANMessage msg)
+    protected override bool sendMessageDevice(ref CANMessage msg)
     {
         try
         {

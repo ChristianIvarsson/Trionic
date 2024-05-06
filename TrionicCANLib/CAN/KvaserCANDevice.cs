@@ -394,7 +394,7 @@ namespace TrionicCANLib.CAN
         /// </summary>
         /// <param name="a_message">A CANMessage.</param>
         /// <returns>true on success, othewise false.</returns>
-        override protected bool sendMessageDevice(CANMessage a_message)
+        override protected bool sendMessageDevice(ref CANMessage a_message)
         {
             byte[] msg = a_message.getDataAsByteArray();
 

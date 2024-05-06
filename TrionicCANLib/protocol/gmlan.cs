@@ -374,9 +374,9 @@ namespace TrionicCANLib.API
                         cmd |= (ulong)DataToSend[i] << ((i + 1) * 8);
                     }
 
-                    msg.setData(cmd);
+                    msg.setData(ref cmd);
                     m_parent.canListener.setupWaitMessage(m_TargetId);
-                    if (!m_parent.canUsbDevice.sendMessage(msg))
+                    if (!m_parent.canUsbDevice.sendMessage(ref msg))
                     {
                         m_parent.CastInfoEvent("TransferFrame: Couldn't send message", ActivityType.TransferLayer);
                         return 0;
@@ -396,9 +396,9 @@ namespace TrionicCANLib.API
                         cmd |= (ulong)DataToSend[bufPtr++] << (i * 8);
                     }
 
-                    msg.setData(cmd);
+                    msg.setData(ref cmd);
                     m_parent.canListener.setupWaitMessage(m_TargetId);
-                    if (!m_parent.canUsbDevice.sendMessage(msg))
+                    if (!m_parent.canUsbDevice.sendMessage(ref msg))
                     {
                         m_parent.CastInfoEvent("TransferFrame: Couldn't send message", ActivityType.TransferLayer);
                         return 0;
@@ -470,8 +470,8 @@ namespace TrionicCANLib.API
                                 m_parent.canListener.setupWaitMessage(m_TargetId);
                             }
 
-                            msg.setData(cmd);
-                            if (!m_parent.canUsbDevice.sendMessage(msg))
+                            msg.setData(ref cmd);
+                            if (!m_parent.canUsbDevice.sendMessage(ref msg))
                             {
                                 m_parent.CastInfoEvent("TransferFrame: Couldn't send message", ActivityType.TransferLayer);
                                 return 0;
@@ -514,9 +514,9 @@ namespace TrionicCANLib.API
                         cmd |= (ulong)DataToSend[i] << ((i + 2) * 8);
                     }
 
-                    msg.setData(cmd);
+                    msg.setData(ref cmd);
                     m_parent.canListener.setupWaitMessage(m_TargetId);
-                    if (!m_parent.canUsbDevice.sendMessage(msg))
+                    if (!m_parent.canUsbDevice.sendMessage(ref msg))
                     {
                         m_parent.CastInfoEvent("TransferFrame: Couldn't send message", ActivityType.TransferLayer);
                         return 0;
@@ -597,7 +597,7 @@ namespace TrionicCANLib.API
                 if (!(m_parent.canUsbDevice is CANELM327Device))
                 {
                     msg.setData(m_TargetDelay << 16 | 0x000030);
-                    if (!m_parent.canUsbDevice.sendMessage(msg))
+                    if (!m_parent.canUsbDevice.sendMessage(ref msg))
                     {
                         m_parent.CastInfoEvent("TransferUSDT: Couldn't send message", ActivityType.ConvertingFile);
                         return 0;
@@ -687,8 +687,8 @@ namespace TrionicCANLib.API
                         m_parent.canListener.setupWaitMessage(m_TargetId);
                     }
 
-                    msg.setData(cmd);
-                    if (!m_parent.canUsbDevice.sendMessage(msg))
+                    msg.setData(ref cmd);
+                    if (!m_parent.canUsbDevice.sendMessage(ref msg))
                     {
                         m_parent.CastInfoEvent("TransferFrameNoResponse: Couldn't send message", ActivityType.TransferLayer);
                         return false;
@@ -717,8 +717,8 @@ namespace TrionicCANLib.API
                         m_parent.canListener.setupWaitMessage(m_TargetId);
                     }
 
-                    msg.setData(cmd);
-                    if (!m_parent.canUsbDevice.sendMessage(msg))
+                    msg.setData(ref cmd);
+                    if (!m_parent.canUsbDevice.sendMessage(ref msg))
                     {
                         m_parent.CastInfoEvent("TransferFrameNoResponse: Couldn't send message", ActivityType.TransferLayer);
                         return false;
@@ -797,8 +797,8 @@ namespace TrionicCANLib.API
                                 }
                             }
 
-                            msg.setData(cmd);
-                            if (!m_parent.canUsbDevice.sendMessage(msg))
+                            msg.setData(ref cmd);
+                            if (!m_parent.canUsbDevice.sendMessage(ref msg))
                             {
                                 m_parent.CastInfoEvent("TransferFrameNoResponse: Couldn't send message", ActivityType.TransferLayer);
                                 return false;
@@ -848,8 +848,8 @@ namespace TrionicCANLib.API
                         m_parent.canListener.setupWaitMessage(m_TargetId);
                     }
 
-                    msg.setData(cmd);
-                    if (!m_parent.canUsbDevice.sendMessage(msg))
+                    msg.setData(ref cmd);
+                    if (!m_parent.canUsbDevice.sendMessage(ref msg))
                     {
                         m_parent.CastInfoEvent("TransferFrameNoResponse: Couldn't send message", ActivityType.TransferLayer);
                         return false;
@@ -1325,9 +1325,9 @@ namespace TrionicCANLib.API
                 // Fast-forward queue index
                 m_parent.canListener.ClearQueue();
 
-                msg.setData(cmd);
+                msg.setData(ref cmd);
                 m_parent.canListener.setupWaitMessage(m_TargetId);
-                if (!m_parent.canUsbDevice.sendMessage(msg))
+                if (!m_parent.canUsbDevice.sendMessage(ref msg))
                 {
                     m_parent.CastInfoEvent("TransferData: Couldn't send message", ActivityType.TransferLayer);
                     return false;
@@ -1437,9 +1437,9 @@ namespace TrionicCANLib.API
 
                 m_HaveFullResponse = false;
 
-                msg.setData(cmd);
+                msg.setData(ref cmd);
                 m_parent.canListener.setupWaitMessage(m_TargetId);
-                if (!m_parent.canUsbDevice.sendMessage(msg))
+                if (!m_parent.canUsbDevice.sendMessage(ref msg))
                 {
                     m_parent.CastInfoEvent("ProgrammingMode: Couldn't send message", ActivityType.TransferLayer);
                     return false;
@@ -1500,9 +1500,9 @@ namespace TrionicCANLib.API
             // Fast-forward queue index
             m_parent.canListener.ClearQueue();
 
-            msg.setData(cmd);
+            msg.setData(ref cmd);
             m_parent.canListener.setupWaitMessage(ExpectedTargetId, m_TargetId);
-            if (!m_parent.canUsbDevice.sendMessage(msg))
+            if (!m_parent.canUsbDevice.sendMessage(ref msg))
             {
                 m_parent.CastInfoEvent("readStatusOfDTCByDTCNumber: Couldn't send message", ActivityType.TransferLayer);
                 return 0;
@@ -1557,9 +1557,9 @@ namespace TrionicCANLib.API
             // Fast-forward queue index
             m_parent.canListener.ClearQueue();
 
-            msg.setData(cmd);
+            msg.setData(ref cmd);
             m_parent.canListener.setupWaitMessage(ExpectedTargetId, m_TargetId);
-            if (!m_parent.canUsbDevice.sendMessage(msg))
+            if (!m_parent.canUsbDevice.sendMessage(ref msg))
             {
                 m_parent.CastInfoEvent("ReadStatusOfDTCByStatusMask: Couldn't send message", ActivityType.TransferLayer);
                 return null;

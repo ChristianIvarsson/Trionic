@@ -126,7 +126,7 @@ namespace TrionicCANLib.CAN
         }
 
 
-        protected override bool sendMessageDevice(CANMessage a_message)
+        protected override bool sendMessageDevice(ref CANMessage a_message)
         {
             if (!m_serialPort.IsOpen)
             {

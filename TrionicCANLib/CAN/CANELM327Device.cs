@@ -232,7 +232,7 @@ namespace TrionicCANLib.CAN
             return 0;
         }
 
-        protected override bool sendMessageDevice(CANMessage a_message)
+        protected override bool sendMessageDevice(ref CANMessage a_message)
         {
             lock (lockObj)
             {

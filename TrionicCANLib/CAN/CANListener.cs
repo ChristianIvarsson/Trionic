@@ -52,7 +52,9 @@ namespace TrionicCANLib.CAN
 
         public CANMessage waitMessage(int a_timeout)
         {
+#if DEBUG
             logger.Debug("waitMessage");
+#endif
             sw.Reset();
             sw.Start();
             CANMessage retMsg = new CANMessage();
@@ -139,7 +141,9 @@ namespace TrionicCANLib.CAN
 
         public override void FlushQueue()
         {
+#if DEBUG
             logger.Debug("FlushQueue");
+#endif
             _queue = new CANMessage[QUEUE_SIZE];
             _receiveMessageIndex = 0;
             _readMessageIndex = 0;
@@ -147,7 +151,9 @@ namespace TrionicCANLib.CAN
 
         override public void handleMessage(CANMessage a_message)
         {
+#if DEBUG
             logger.Debug("handleMessage");
+#endif
             if (_queue == null)
             {
                 _queue = new CANMessage[QUEUE_SIZE];
@@ -162,7 +168,7 @@ namespace TrionicCANLib.CAN
             messageReceived = false;
             //_queue[_receiveMessageIndex] = a_message;
             _queue[_receiveMessageIndex] = new CANMessage();
-            _queue[_receiveMessageIndex].setData(a_message.getData());
+            _queue[_receiveMessageIndex].setData(ref a_message.getDataRef());
             _queue[_receiveMessageIndex].setID(a_message.getID());
             _queue[_receiveMessageIndex].setLength(a_message.getLength());
 
@@ -186,7 +192,9 @@ namespace TrionicCANLib.CAN
             }
             if (size > 1)
             {
+#if DEBUG
                 logger.Debug("Buffering: " + size.ToString() + " messages");
+#endif
                 //dumpQueue();
             }
         }
@@ -196,7 +204,9 @@ namespace TrionicCANLib.CAN
         /// </summary>
         public void ClearQueue()
         {
+#if DEBUG
             logger.Debug("ClearQueue");
+#endif
             _readMessageIndex = _receiveMessageIndex;
         }
     }

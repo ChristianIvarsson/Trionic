@@ -150,7 +150,7 @@ namespace TrionicCANLib.CAN
                         canMessage.setLength(r_canMsg.len);
                         canMessage.setTimeStamp(r_canMsg.timestamp);
                         canMessage.setFlags(r_canMsg.flags);
-                        canMessage.setData(r_canMsg.data);
+                        canMessage.setData(ref r_canMsg.data);
 
                         receivedMessage(canMessage);
                     }
@@ -328,7 +328,7 @@ namespace TrionicCANLib.CAN
         /// </summary>
         /// <param name="a_message">A CANMessage.</param>
         /// <returns>true on success, othewise false.</returns>
-        override protected bool sendMessageDevice(CANMessage a_message)
+        override protected bool sendMessageDevice(ref CANMessage a_message)
         {
             Lawicel.CANUSB.CANMsg msg = new Lawicel.CANUSB.CANMsg();
             msg.id = a_message.getID();
@@ -375,7 +375,7 @@ namespace TrionicCANLib.CAN
                     }
                     else if (r_canMsg.id != a_canID)
                         continue;
-                    canMsg.setData(r_canMsg.data);
+                    canMsg.setData(ref r_canMsg.data);
                     canMsg.setID(r_canMsg.id);
                     canMsg.setLength(r_canMsg.len);
                     return (uint)r_canMsg.id;
@@ -465,7 +465,7 @@ namespace TrionicCANLib.CAN
             Lawicel.CANUSB.CANMsg msg = new Lawicel.CANUSB.CANMsg();
             msg1.setData(0x000040021100813f);
 
-            if (!sendMessage(msg1))
+            if (!sendMessage(ref msg1))
             {
                 logger.Debug("Unable to send session request");
                 return false;

@@ -152,15 +152,15 @@ namespace TrionicCANLib.CAN
         /// </summary>
         /// <param name="a_message">The CANMessage</param>
         /// <returns>true on success, otherwise false.</returns>
-        public bool sendMessage(CANMessage a_message)
+        public bool sendMessage(ref CANMessage a_message)
         {
-            bool result = sendMessageDevice(a_message);
+            bool result = sendMessageDevice(ref a_message);
             string prefix = result == true ? "tx:" : "tx failed:";
 
             logger.Trace(String.Format("{0} {1:X3} {2:X16}", prefix, a_message.getID(), BitTools.ReverseOrder(a_message.getData())));
             return result;
         }
-        abstract protected bool sendMessageDevice(CANMessage a_message);
+        abstract protected bool sendMessageDevice(ref CANMessage a_message);
 
         abstract public uint waitForMessage(uint a_canID, uint timeout, out CANMessage canMsg);
 

@@ -90,11 +90,13 @@ namespace TrionicCANLib.CAN
         public byte getFlags() { return m_flags; }
         public byte getLength() { return m_length; }
         public ulong getData() { return m_data; }
+        public ref ulong getDataRef() { return ref m_data; }
         public void setID(uint a_id) { m_id = a_id; }
         public void setTimeStamp(uint a_timeStamp) { m_timestamp = a_timeStamp; }
         public void setFlags(byte a_flags) { m_flags = a_flags; }
         public void setLength(byte a_length) { m_length = a_length; }
         public void setData(ulong a_data) { m_data = a_data; }
+        public void setData(ref ulong a_data) { m_data = a_data; }
 
         /// <summary>
         /// Set a byte in the data of a CANMessage
