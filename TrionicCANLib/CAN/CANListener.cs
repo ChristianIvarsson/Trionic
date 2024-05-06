@@ -168,7 +168,7 @@ namespace TrionicCANLib.CAN
             messageReceived = false;
             //_queue[_receiveMessageIndex] = a_message;
             _queue[_receiveMessageIndex] = new CANMessage();
-            _queue[_receiveMessageIndex].setData(ref a_message.getDataRef());
+            _queue[_receiveMessageIndex].setData(ref a_message.getData());
             _queue[_receiveMessageIndex].setID(a_message.getID());
             _queue[_receiveMessageIndex].setLength(a_message.getLength());
 

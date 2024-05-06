@@ -89,8 +89,7 @@ namespace TrionicCANLib.CAN
         public uint getTimeStamp() { return m_timestamp; }
         public byte getFlags() { return m_flags; }
         public byte getLength() { return m_length; }
-        public ulong getData() { return m_data; }
-        public ref ulong getDataRef() { return ref m_data; }
+        public ref ulong getData() { return ref m_data; }
         public void setID(uint a_id) { m_id = a_id; }
         public void setTimeStamp(uint a_timeStamp) { m_timestamp = a_timeStamp; }
         public void setFlags(byte a_flags) { m_flags = a_flags; }
@@ -109,6 +108,7 @@ namespace TrionicCANLib.CAN
                 throw new Exception("Index out of range");
             ulong tmp = (ulong)a_byte;
             tmp = tmp << (int)(a_index * 8);
+            m_data &= ~((ulong)0xff << (int)(a_index * 8));
             m_data = m_data | tmp;
         }
 
