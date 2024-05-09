@@ -267,6 +267,117 @@ namespace TrionicCANLib.API
             return true;
         }
 
+        public delegate bool SeedCalcDelegate(byte level, ref byte[] seed, out byte[] key);
+
+        // You want to use your local calculator function? - Say no more
+        public bool SecurityAccess(SeedCalcDelegate SeedCalc, byte level = 1)
+        {
+            int retLen;
+
+            DataToSend[0] = 0x27;
+            DataToSend[1] = level;
+
+            // <27 level> --> <67 level>
+            if ((retLen = TransferFrame(2)) < 2)
+            {
+                m_parent.CastInfoEvent("SecurityAccess: No or unexpected response", ActivityType.TransferLayer);
+                return false;
+            }
+
+            if (ReadData[0] != 0x67)
+            {
+                if (ReadData[0] == 0x7f && ReadData[1] == 0x27)
+                {
+                    m_parent.CastInfoEvent("SecurityAccess failed due to: " + TranslateErrorCode(ReadData[2]), ActivityType.TransferLayer);
+                }
+                else
+                {
+                    m_parent.CastInfoEvent("SecurityAccess: Unknown error", ActivityType.TransferLayer);
+                }
+
+                return false;
+            }
+            else if (ReadData[1] != level)
+            {
+                m_parent.CastInfoEvent("SecurityAccess: Target did not respond as expected", ActivityType.TransferLayer);
+                return false;
+            }
+
+            // A target might respond with all 00' to indicate that security access has already been granted
+            // This will also return true if the target didn't send any additional seed bytes ..
+            // .. (which might not be desired but that calls for custom code for that particular target)
+            bool HasGranted = true;
+            for (int i = 0; i < (retLen - 2); i++)
+            {
+                if (ReadData[2 + i] != 0)
+                {
+                    HasGranted = false;
+                    break;
+                }
+            }
+
+            if (HasGranted)
+            {
+                m_parent.CastInfoEvent("SecurityAccess has already been granted", ActivityType.TransferLayer);
+                return true;
+            }
+
+            // This expects the previous check to return if no seed bytes were received!
+            byte[] SeedBuffer = new byte[retLen - 2];
+            for (int i = 0; i < (retLen - 2); i++)
+            {
+                SeedBuffer[i] = ReadData[2 + i];
+            }
+
+            byte[] KeyBuffer;
+
+            if (!SeedCalc(level, ref SeedBuffer, out KeyBuffer) ||
+                 KeyBuffer        == null ||
+                 KeyBuffer.Length == 0 ||
+                 KeyBuffer.Length > (4095 - 2))
+            {
+                m_parent.CastInfoEvent("SecurityAccess: Could not calculate key for target", ActivityType.TransferLayer);
+                return false;
+            }
+
+            DataToSend[1] = (byte)(level + 1);
+
+            for (int i = 0; i < KeyBuffer.Length; i++)
+            {
+                DataToSend[2 + i] = KeyBuffer[i];
+            }
+
+            // <27 level> --> <67 level>
+            if (TransferFrame(2 + KeyBuffer.Length) < 2)
+            {
+                m_parent.CastInfoEvent("SecurityAccess: No or unexpected response", ActivityType.TransferLayer);
+                return false;
+            }
+
+            if (ReadData[0] != 0x67)
+            {
+                if (ReadData[0] == 0x7f && ReadData[1] == 0x27)
+                {
+                    m_parent.CastInfoEvent("SecurityAccess failed due to: " + TranslateErrorCode(ReadData[2]), ActivityType.TransferLayer);
+                }
+                else
+                {
+                    m_parent.CastInfoEvent("SecurityAccess: Unknown error", ActivityType.TransferLayer);
+                }
+
+                return false;
+            }
+            else if (ReadData[1] != (level + 1))
+            {
+                m_parent.CastInfoEvent("SecurityAccess: Target did not respond as expected", ActivityType.TransferLayer);
+                return false;
+            }
+
+            m_parent.CastInfoEvent("SecurityAccess granted", ActivityType.TransferLayer);
+
+            return true;
+        }
+
         // Req 3b id ..
         // aka kwp2k writeDataByLocalIdentifier
         public bool WriteDataByIdentifier(byte[] data, byte id, int len = -1)
@@ -419,6 +530,7 @@ namespace TrionicCANLib.API
                 if (tmp != null)
                 {
                     string InfoString = "";
+
                     for (int d = 0; d < tmp.Length; d++)
                     {
                         InfoString += tmp[d].ToString("X02");
@@ -426,7 +538,6 @@ namespace TrionicCANLib.API
 
                     m_parent.CastInfoEvent(i.ToString("X02") + ": " + InfoString, ActivityType.QueryingECUTypeInfo);
 
-                    InfoString = "";
                     try
                     {
                         InfoString = Encoding.UTF8.GetString(tmp, 0, tmp.Length);

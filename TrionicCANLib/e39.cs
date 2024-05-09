@@ -66,7 +66,6 @@ namespace TrionicCANLib.API
         private bool _stallKeepAlive;
         private const int maxRetries = 100;
         private const int timeoutP2ct = 150;
-        private const int timeoutP2ce = 5000;
         private const uint e39e78LoaderBase = 0x40004000;
 
         private readonly ReadDIDInfo[] E39InfoList =
@@ -157,10 +156,10 @@ namespace TrionicCANLib.API
         {
             private SettingProperty[] m_settings = new SettingProperty[]
             {
-                new SettingProperty ( nameof(TestInt)  , null, "", "Farts" ),
+                new SettingProperty ( nameof(TestInt)  , null, "", "Settings" ),
                 new SettingProperty ( nameof(TestInt2) , new Object[] { "Index 0", "Index 1", "Index 2" }, "", "Some name" ),
                 new SettingProperty ( nameof(TestInt3) , new Object[] { "Index 0", "Index 1", "Index 2" }, "", "Another one" ),
-                new SettingProperty ( nameof(TestBool) , null, "", "Play around with Farts" ),
+                new SettingProperty ( nameof(TestBool) , null, "", "Play around with settings" ),
                 new SettingProperty ( nameof(TestBool2), null, "", "Click me" ),
             };
 
@@ -243,9 +242,9 @@ namespace TrionicCANLib.API
             public override bool TroubleCodes { get { return true; } }
         }
 
-        private TargetFeatures e39feats = new e39features();
-        private TargetFeatures e78feats = new e78features();
-        private TargetFeatures bamfeats = new bamfeatures();
+        private static TargetFeatures e39feats = new e39features();
+        private static TargetFeatures e78feats = new e78features();
+        private static TargetFeatures bamfeats = new bamfeatures();
 
         public override ref TargetFeatures GetFeatures(ECU ecu)
         {

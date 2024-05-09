@@ -125,7 +125,7 @@ namespace TrionicCANLib.API
         }
 
         // Extended requests.
-        // "Functionally addressed request messages shall always be single frame and shall use the “extended addressing” frame format"
+        // "Functionally addressed request messages shall always be single frame and shall use the "extended addressing" frame format"
         // .. "However, all resulting response messages will be formatted as physical diagnostic responses with normal addressing"
         private byte m_ExtendedAddress = 0;
         public byte ExtendedAddress
@@ -338,7 +338,6 @@ namespace TrionicCANLib.API
         public override int TransferFrame(int BytesToSend)
         {
             CANMessage msg = new CANMessage(m_TesterId, 0, 8);
-            CANMessage response;
             ulong data;
 
             m_HaveFullResponse = false;
@@ -411,8 +410,7 @@ namespace TrionicCANLib.API
                     // TODO: Implement timeout
                     do
                     {
-                        response = m_parent.canListener.waitMessage(timeoutP2ct);
-                        data = response.getData();
+                        data = m_parent.canListener.waitMessage(timeoutP2ct).getData();
                     } while ((data & 0xff) == 0x31);
 
                     if ((data & 0xff) == 0x30) // All is green
@@ -536,8 +534,7 @@ namespace TrionicCANLib.API
             // GMLAN dictates that a target could delay responses while busy
         ResponsePending:
 
-            response = m_parent.canListener.waitMessage(timeoutP2ct);
-            data = response.getData();
+            data = m_parent.canListener.waitMessage(timeoutP2ct).getData();
 
             // Single frame
             if ((data & 0xff) > 0 && (data & 0xff) < 8)
@@ -609,8 +606,7 @@ namespace TrionicCANLib.API
                     int thisLen = (recLen > 7) ? 7 : recLen;
                     recLen -= thisLen;
 
-                    response = m_parent.canListener.waitMessage(timeoutP2ct);
-                    data = response.getData();
+                    data = m_parent.canListener.waitMessage(timeoutP2ct).getData();
 
                     if ((int)(data & 0xff) != stp)
                     {
@@ -642,7 +638,7 @@ namespace TrionicCANLib.API
 
         private bool TransferFrameNoResponse(int BytesToSend, uint ExpectedTargetId)
         {
-            CANMessage response, msg = new CANMessage(m_TesterId, 0, 8);
+            CANMessage msg = new CANMessage(m_TesterId, 0, 8);
             ulong data;
 
             m_HaveFullResponse = false;
@@ -731,8 +727,7 @@ namespace TrionicCANLib.API
                     // TODO: Implement timeout
                     do
                     {
-                        response = m_parent.canListener.waitMessage(timeoutP2ct);
-                        data = response.getData();
+                        data = m_parent.canListener.waitMessage(timeoutP2ct).getData();
                     } while ((data & 0xff) == 0x31);
 
                     if ((data & 0xff) == 0x30) // All is green
